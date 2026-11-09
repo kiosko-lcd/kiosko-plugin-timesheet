@@ -40,12 +40,12 @@ export const timelogs = defineSource({
     es: 'Las horas imputadas en GitLab por ti y tu grupo en las últimas semanas, y tus imputaciones de hoy, con glab o con un token.',
   },
   options: t.object({
-    host: t.string({ placeholder: 'gitlab.com', label: { en: 'GitLab host', es: 'Servidor de GitLab' }, help: { en: 'Empty = glab\'s default host (gitlab.com with a token).', es: 'Vacío = el servidor por defecto de glab (gitlab.com con token).' } }),
+    host: t.string({ placeholder: 'gitlab.com', risk: 'network', label: { en: 'GitLab host', es: 'Servidor de GitLab' }, help: { en: 'Empty = glab\'s default host (gitlab.com with a token).', es: 'Vacío = el servidor por defecto de glab (gitlab.com con token).' } }),
     token: t.string({ secret: true, label: { en: 'Access token', es: 'Token de acceso' }, help: { en: 'A personal access token with read_api. Empty = use the glab CLI and its login.', es: 'Un token personal con read_api. Vacío = usar el CLI glab y su sesión.' } }),
     group: t.string({ placeholder: 'acme/team', label: { en: 'Group', es: 'Grupo' }, help: { en: 'Full path of the GitLab group whose hours to show. Empty = only yours.', es: 'Ruta completa del grupo de GitLab cuyas horas mostrar. Vacío = sólo las tuyas.' } }),
     me: t.string({ advanced: true, label: { en: 'Your username', es: 'Tu usuario' }, help: { en: 'Empty = the logged-in user.', es: 'Vacío = el usuario con sesión iniciada.' } }),
     weeks: t.integer({ default: 4, min: 1, max: 12, label: { en: 'Weeks for the averages', es: 'Semanas para las medias' } }),
-    bin: t.string({ default: 'glab', format: 'path', advanced: true, label: { en: 'glab command', es: 'Comando glab' } }),
+    bin: t.string({ default: 'glab', format: 'path', risk: 'exec', advanced: true, label: { en: 'glab command', es: 'Comando glab' } }),
   }),
   intervalMs: 5 * 60_000,
   async read({ options: o, signal, now }): Promise<TimelogsData> {
@@ -69,7 +69,7 @@ export const activity = defineSource({
     es: 'Los bloques de trabajo de hoy por proyecto, del registro de actividad del hook de agentes (un JSONL por día).',
   },
   options: t.object({
-    dir: t.string({ default: DEFAULT_ACTIVITY_DIR, format: 'path', label: { en: 'Activity folder', es: 'Carpeta de actividad' } }),
+    dir: t.string({ default: DEFAULT_ACTIVITY_DIR, format: 'path', risk: 'path', label: { en: 'Activity folder', es: 'Carpeta de actividad' } }),
     gapMin: t.integer({ default: 15, min: 1, max: 120, unit: 'min', advanced: true, label: { en: 'Gap that splits a block', es: 'Hueco que parte un bloque' } }),
     tailMin: t.integer({ default: 5, min: 0, max: 60, unit: 'min', advanced: true, label: { en: 'Time added after the last event', es: 'Tiempo tras el último evento' } }),
   }),
