@@ -25,7 +25,7 @@ npm install --prefix ~/.config/kiosko/plugins kiosko-plugin-timesheet
 
 ### Hours logged — `timesheet/hours`
 
-Hours logged in GitLab by you and your group: today, this week, daily and weekly averages, and each one's trend against themselves. Yours turn green or red against what is due by now.
+Hours logged in GitLab by you and your group: today, this week, daily and weekly averages, and each one's trend against themselves. Yours turn green or red against what is due by now, per your working week in Settings.
 
 ![Hours logged](docs/hours.png)
 
@@ -33,18 +33,14 @@ Uses: `timesheet/timelogs`.
 
 | Option | Type | Default | |
 |---|---|---|---|
-| `start` | string | `"09:00"` | Workday starts |
-| `end` | string | `"17:00"` | Workday ends |
-| `hours` | number | `8` | Hours per day |
-| `weekly` | number | `40` | Hours per week |
-| `fridayEnd` | string | `""` | Friday ends. Empty = like any other day. |
-| `fridayHours` | number | `0` | Friday hours |
-| `holidays` | list | `[]` | Holidays |
+| `rows` | number | `0` | Rows. 0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in "+N more". |
+| `columns` | list | `["today","week","dayAvg","weekAvg","trend"]` | Columns. Which figures, in this order. Empty = all. |
+| `people` | list | `[]` | People. Empty: the whole group. Usernames or patterns, comma-separated (ana.*, !bot-*); an alias works too. |
 | `aliases` | map | `{}` | Names. Username → what to show. Others show their first three letters. |
 
 ### Left to log — `timesheet/focus`
 
-What you have logged today against what is due by now, and what is still unlogged: finished meetings and agent activity per project.
+What you have logged today against what is due by now (per your working week in Settings), and what is still unlogged: finished meetings and agent activity per project.
 
 ![Left to log](docs/focus.png)
 
@@ -52,16 +48,12 @@ Uses: `timesheet/timelogs`, `timesheet/activity`, `calendar/events`.
 
 | Option | Type | Default | |
 |---|---|---|---|
-| `start` | string | `"09:00"` | Workday starts |
-| `end` | string | `"17:00"` | Workday ends |
-| `hours` | number | `8` | Hours per day |
-| `weekly` | number | `40` | Hours per week |
-| `fridayEnd` | string | `""` | Friday ends. Empty = like any other day. |
-| `fridayHours` | number | `0` | Friday hours |
-| `holidays` | list | `[]` | Holidays |
-| `minPendingMin` | number | `15` | Smallest activity to propose |
-| `meetingGraceMin` | number | `15` | Urgent after a meeting for |
-| `closingMin` | number | `30` | Urgent before leaving. In the last minutes of the day, if hours are still owed. |
+| `rows` | number | `0` | Rows. 0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in "+N more". |
+| `minPendingMs` | duration (ms) | `900000` | Smallest activity to propose |
+| `debtWarnMs` | duration (ms) | `3600000` | Owed: amber from. Hours due by now and not logged yet. |
+| `debtAlertMs` | duration (ms) | `7200000` | Owed: red from |
+| `meetingGraceMs` | duration (ms) | `900000` | Urgent after a meeting for. 0 = never. |
+| `closingMs` | duration (ms) | `1800000` | Urgent before leaving. In the last minutes of the day, if hours are still owed. 0 = never. |
 
 ## Data sources
 
@@ -85,8 +77,8 @@ Today's work blocks per project, from the agent hook's activity log (one JSONL f
 | Option | Type | Default | |
 |---|---|---|---|
 | `dir` | string | `"~/.aimonitor/actividad"` | Activity folder |
-| `gapMin` | number | `15` | Gap that splits a block |
-| `tailMin` | number | `5` | Time added after the last event |
+| `gapMs` | duration (ms) | `900000` | Gap that splits a block |
+| `tailMs` | duration (ms) | `300000` | Time added after the last event |
 
 ## Development
 

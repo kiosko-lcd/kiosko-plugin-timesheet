@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDays, daysBetween, expectedHours, fetchRows, graphqlUrl, hoursRound, hoursText, inWorkday, isWeekend, localDay, localMinutes, minutesToEnd, mondayOf, parseClock, parseTimelogPage, shortName, summarize, timelogQuery, trendOf, whoAmI, windowStart, workFractions, type TimelogRow } from './index.ts';
+import { DEFAULT_WORKDAY, type Workday } from '@kiosko/sdk';
+import { addDays, dayShape, daysBetween, expectedHours, fetchRows, graphqlUrl, hoursRound, hoursText, inWorkday, localDay, localMinutes, minutesToEnd, mondayOf, parseTimelogPage, shortName, summarize, timelogQuery, trendOf, weekdayOf, weekHours, whoAmI, windowStart, workFractions, type TimelogRow } from './index.ts';
 
 const TZ = 'Europe/Madrid';
 /** Thursday 2026-10-08, 17:00 in Madrid (CEST, UTC+2). */
@@ -17,8 +18,10 @@ test('Monday of the week and window from the Monday before', () => {
   assert.equal(mondayOf('2026-10-11'), '2026-10-05');
   assert.equal(windowStart(NOW, 1, TZ), '2026-09-28');
   assert.equal(windowStart(NOW, 4, TZ), '2026-09-07');
-  assert.equal(isWeekend('2026-10-04'), true);
-  assert.equal(isWeekend('2026-10-05'), false);
+  assert.equal(weekdayOf('2026-10-04'), 0);
+  assert.equal(weekdayOf('2026-10-05'), 1);
+  assert.equal(dayShape(DEFAULT_WORKDAY, '2026-10-04').working, false);
+  assert.equal(dayShape(DEFAULT_WORKDAY, '2026-10-05').working, true);
   assert.equal(addDays('2026-10-31', 1), '2026-11-01');
   assert.equal(daysBetween('2026-09-28', '2026-10-04'), 6);
 });
@@ -104,28 +107,48 @@ test('connection helpers', async () => {
   await assert.rejects(whoAmI(async () => '{"data":{"currentUser":null}}'), /not logged in/);
 });
 
-test('what is due: the day in a straight line, 40 h Monday to Friday', () => {
-  const w = { start: '09:00', end: '16:30', hours: 7.5, weekly: 40 };
+const week = (o: Partial<Workday> = {}): Workday => ({ ...DEFAULT_WORKDAY, ...o });
+
+test('what is due, from the working week: the day in a straight line, 40 h Monday to Friday', () => {
+  const w = week({ start: '09:00', end: '16:30', hours: 8 });
   const exp = (iso: string) => expectedHours(at(iso), w, TZ);
-  assert.equal(parseClock('16:30'), 990);
   assert.equal(localMinutes(at('2026-10-08T10:45:00Z'), TZ), 12 * 60 + 45);
   assert.deepEqual(exp('2026-10-05T06:00:00Z'), { today: 0, week: 0 });
   assert.deepEqual(exp('2026-10-07T07:00:00Z'), { today: 0, week: 16 });
-  assert.deepEqual(exp('2026-10-08T10:45:00Z'), { today: 3.75, week: 28 });
-  assert.deepEqual(exp('2026-10-09T16:00:00Z'), { today: 7.5, week: 40 });
+  assert.deepEqual(exp('2026-10-08T10:45:00Z'), { today: 4, week: 28 });
+  assert.deepEqual(exp('2026-10-09T16:00:00Z'), { today: 8, week: 40 });
   assert.deepEqual(exp('2026-10-10T10:00:00Z'), { today: 0, week: 40 });
-  assert.deepEqual(workFractions(at('2026-10-07T11:00:00Z'), { start: '09:00', end: '17:00' }, TZ), { day: 0.5, week: 0.5 });
+  assert.deepEqual(workFractions(at('2026-10-07T11:00:00Z'), week(), TZ), { day: 0.5, week: 0.5 });
 });
 
-test('workday: a short Friday and holidays', () => {
-  const w = { start: '09:00', end: '16:30', hours: 7.5, weekly: 40, friday: { end: '15:00', hours: 6 }, holidays: ['2026-10-12'] };
+test('working week: a short Friday (byDay) and holidays', () => {
+  const w = week({ start: '09:00', end: '16:30', hours: 7.5, byDay: { '5': { end: '15:00', hours: 6 } }, holidays: ['2026-10-12'] });
   assert.equal(inWorkday(at('2026-10-09T12:59:00Z'), w, TZ), true);
   assert.equal(inWorkday(at('2026-10-09T13:00:00Z'), w, TZ), false);
   assert.equal(minutesToEnd(at('2026-10-09T12:30:00Z'), w, TZ), 30);
   assert.equal(minutesToEnd(at('2026-10-10T12:30:00Z'), w, TZ), null);
-  const e = expectedHours(at('2026-10-09T10:00:00Z'), w, TZ);
-  assert.equal(e.today, 3);
-  assert.ok(Math.abs(e.week - (40 * 33) / 36) < 1e-9);
+  assert.deepEqual(expectedHours(at('2026-10-09T10:00:00Z'), w, TZ), { today: 3, week: 33 });
+  assert.deepEqual(weekHours(w, '2026-10-14'), [0, 7.5, 7.5, 7.5, 6, 0, 0]);
   assert.equal(inWorkday(at('2026-10-12T10:00:00Z'), w, TZ), false);
   assert.deepEqual(expectedHours(at('2026-10-12T10:00:00Z'), w, TZ), { today: 0, week: 0 });
+});
+
+test('working week: four days, or Saturdays, change what is due and the daily average', () => {
+  const four = week({ days: [1, 2, 3, 4], hours: 9 });
+  assert.deepEqual(expectedHours(at('2026-10-09T10:00:00Z'), four, TZ), { today: 0, week: 36 }, 'Friday off: nothing due today');
+  assert.equal(inWorkday(at('2026-10-09T10:00:00Z'), four, TZ), false);
+  const sat = week({ days: [1, 2, 3, 4, 5, 6], byDay: { '6': { end: '13:00', hours: 4 } } });
+  assert.deepEqual(expectedHours(at('2026-10-10T09:00:00Z'), sat, TZ), { today: 2, week: 42 });
+  // Two weeks of four 9-hour days, all logged on Mondays: 8 working days.
+  const rows: TimelogRow[] = [
+    { user: 'me', at: at('2026-09-21T09:00:00Z'), hours: 36 },
+    { user: 'me', at: at('2026-09-28T09:00:00Z'), hours: 36 },
+    { user: 'me', at: at('2026-10-02T09:00:00Z'), hours: 5 }, // a Friday: not a working day, weekly only
+  ];
+  const me = summarize(rows, { now: NOW, me: 'me', weeks: 2, timeZone: TZ, workday: four }).people[0]!;
+  assert.equal(me.dayAvg, 72 / 8);
+  assert.equal(me.weekAvg, 77 / 2);
+  // A holiday in the period is not a working day either.
+  const off = summarize(rows, { now: NOW, me: 'me', weeks: 2, timeZone: TZ, workday: week({ holidays: ['2026-09-22', '2026-09-23'] }) }).people[0]!;
+  assert.equal(off.dayAvg, (36 + 36 + 5) / 8);
 });

@@ -7,8 +7,9 @@
  *     people log the next day;
  *   - **week**: logged in the current week, Monday to today;
  *   - **daily average**: over the `weeks` complete weeks before this one, the
- *     Monday-to-Friday hours divided by the number of weekdays. Weekends count
- *     neither in hours nor in days; holidays do count as days;
+ *     hours of working days divided by the number of working days, both from
+ *     the user's working week (`ctx.workday`). Days off (weekends, holidays)
+ *     count neither in hours nor in days;
  *   - **weekly average**: over those same weeks, the mean total per week,
  *     weekend included.
  *
@@ -20,6 +21,7 @@
  * pace it is going, against their own weekly average. It compares nobody with
  * anybody, so it works even if everyone counts hours their own way.
  */
+import { DEFAULT_WORKDAY, minutesOf, type Workday } from '@kiosko/sdk';
 import { dataOf, type GraphQL } from './gitlab.ts';
 
 export interface TimelogRow {
@@ -96,10 +98,10 @@ export function windowStart(now: number, weeks: number, timeZone?: string): stri
   return addDays(mondayOf(localDay(now, timeZone)), -7 * weeks);
 }
 
-export function isWeekend(day: string): boolean {
+/** Day of the week of a YYYY-MM-DD date, 0 = Sunday … 6 = Saturday (as `Workday.days`). */
+export function weekdayOf(day: string): number {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
-  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  return dow === 0 || dow === 6;
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
 /** Minutes since local midnight. */
@@ -109,89 +111,74 @@ export function localMinutes(ms: number, timeZone?: string): number {
   return get('hour') * 60 + get('minute');
 }
 
-/** `'16:30'` → 990. */
-export function parseClock(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
-export interface Workday {
-  /** Start and end of the working day, `HH:MM`. */
-  start: string;
-  end: string;
-  /** Hours to log in a full day. */
+export interface DayShape {
+  /** A working day of the week that is not a holiday. */
+  working: boolean;
+  /** Minutes from midnight. */
+  startMin: number;
+  endMin: number;
+  /** Hours due: 0 on days off. */
   hours: number;
-  /** Weekly minimum, Monday to Friday. */
-  weekly: number;
-  /** A shorter Friday: its end and its hours. */
-  friday?: { end: string; hours: number };
-  /** Holidays (YYYY-MM-DD): not working days, and the weekly minimum drops in proportion. */
-  holidays?: string[];
 }
 
-type WorkdayLike = Pick<Workday, 'start' | 'end'> & Partial<Pick<Workday, 'hours' | 'friday' | 'holidays'>>;
-
-/** The working day of a weekday (0 = Monday): Friday's if there is one. */
-export function dayShape(w: WorkdayLike, idx: number): { start: string; end: string; hours: number } {
-  const hours = w.hours ?? 8;
-  return idx === 4 && w.friday ? { start: w.start, end: w.friday.end, hours: w.friday.hours } : { start: w.start, end: w.end, hours };
+/**
+ * The working day of a date (YYYY-MM-DD) in the user's week: like the SDK's
+ * `scheduleOn`, but for a day already cut in the right time zone.
+ */
+export function dayShape(w: Workday, day: string): DayShape {
+  const own = w.byDay?.[String(weekdayOf(day))] ?? {};
+  const working = w.days.includes(weekdayOf(day)) && !(w.holidays ?? []).includes(day);
+  return { working, startMin: minutesOf(own.start || w.start), endMin: minutesOf(own.end || w.end), hours: working ? (own.hours ?? w.hours ?? 0) : 0 };
 }
 
-/** Hours of each weekday of the week of `day`, holidays at 0. */
-function weekHours(w: WorkdayLike, day: string): number[] {
+/** Hours due on each day of the week of `day`, Monday first; days off at 0. */
+export function weekHours(w: Workday, day: string): number[] {
   const monday = mondayOf(day);
-  return [0, 1, 2, 3, 4].map((i) => (w.holidays?.includes(addDays(monday, i)) ? 0 : dayShape(w, i).hours));
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => dayShape(w, addDays(monday, i)).hours);
 }
 
-/** Is it working time now? Monday to Friday, between that day's start and end. */
-export function inWorkday(now: number, w: WorkdayLike, timeZone?: string): boolean {
-  const day = localDay(now, timeZone);
-  const idx = daysBetween(mondayOf(day), day);
-  if (idx >= 5 || w.holidays?.includes(day)) return false;
-  const shape = dayShape(w, idx);
+/** Is it working time now? A working day, between its start and end. */
+export function inWorkday(now: number, w: Workday, timeZone?: string): boolean {
+  const shape = dayShape(w, localDay(now, timeZone));
   const m = localMinutes(now, timeZone);
-  return m >= parseClock(shape.start) && m < parseClock(shape.end);
+  return shape.working && m >= shape.startMin && m < shape.endMin;
 }
 
 /** Minutes left until today's end of work; null outside working time. */
-export function minutesToEnd(now: number, w: WorkdayLike, timeZone?: string): number | null {
+export function minutesToEnd(now: number, w: Workday, timeZone?: string): number | null {
   if (!inWorkday(now, w, timeZone)) return null;
-  const day = localDay(now, timeZone);
-  return parseClock(dayShape(w, daysBetween(mondayOf(day), day)).end) - localMinutes(now, timeZone);
+  return dayShape(w, localDay(now, timeZone)).endMin - localMinutes(now, timeZone);
 }
 
 /**
  * What part of today's working day and of the working week has gone by, 0..1.
- * At the weekend the day doesn't count (0) and the week is whole (1).
+ * The week goes by hours due: a short Friday weighs less than a Monday, a day
+ * off nothing. On a day off the day doesn't count (0) and the week is what
+ * the days before it make (all of it at the weekend).
  */
-export function workFractions(now: number, w: WorkdayLike, timeZone?: string): { day: number; week: number } {
+export function workFractions(now: number, w: Workday, timeZone?: string): { day: number; week: number } {
   const day = localDay(now, timeZone);
   const idx = daysBetween(mondayOf(day), day);
-  if (idx >= 5) return { day: 0, week: 1 };
-  const shape = dayShape(w, idx);
-  const start = parseClock(shape.start), end = parseClock(shape.end);
-  const frac = w.holidays?.includes(day) ? 0 : end > start ? Math.min(1, Math.max(0, (localMinutes(now, timeZone) - start) / (end - start))) : 1;
-  // The week goes by hours: a short Friday weighs less than a Monday, a holiday nothing.
+  const shape = dayShape(w, day);
+  const frac = !shape.working ? 0 : shape.endMin > shape.startMin ? Math.min(1, Math.max(0, (localMinutes(now, timeZone) - shape.startMin) / (shape.endMin - shape.startMin))) : 1;
   const hours = weekHours(w, day);
-  const total = hours.reduce((a, b) => a + b, 0) || 1;
+  const total = hours.reduce((a, b) => a + b, 0);
   const before = hours.slice(0, idx).reduce((a, b) => a + b, 0);
-  return { day: frac, week: (before + frac * hours[idx]!) / total };
+  return { day: frac, week: total ? (before + frac * hours[idx]!) / total : 1 };
 }
 
 /**
  * What you should have logged by now, today and this week, spread in a
- * straight line: the day between start and end, the weekly minimum over the
- * five weekdays. At the weekend nothing is due today and the whole week is.
+ * straight line: each day's hours between its start and end, the week's as
+ * the days go by. Holidays ask for nothing.
  */
 export function expectedHours(now: number, w: Workday, timeZone?: string): { today: number; week: number } {
-  const { day, week } = workFractions(now, w, timeZone);
-  const today = localDay(now, timeZone);
-  const idx = daysBetween(mondayOf(today), today);
-  // A week with holidays asks for less: the minimum, in proportion to its hours.
-  const hours = weekHours(w, today);
-  const full = [0, 1, 2, 3, 4].map((i) => dayShape(w, i).hours).reduce((a, b) => a + b, 0) || 1;
-  const weekly = (w.weekly * hours.reduce((a, b) => a + b, 0)) / full;
-  return { today: (idx < 5 ? hours[idx]! : 0) * day, week: weekly * week };
+  const day = localDay(now, timeZone);
+  const idx = daysBetween(mondayOf(day), day);
+  const hours = weekHours(w, day);
+  const { day: frac } = workFractions(now, w, timeZone);
+  const today = hours[idx]! * frac;
+  return { today, week: hours.slice(0, idx).reduce((a, b) => a + b, 0) + today };
 }
 
 /** `jane.doe` → `jan`: three letters are enough to recognise a teammate. Aliases win, whole. */
@@ -204,8 +191,8 @@ export interface SummaryOptions {
   me: string;
   /** Complete weeks, before the current one, the averages are taken over. */
   weeks: number;
-  /** For the week's pace in the trend; without it, 9:00 to 17:00. */
-  workday?: WorkdayLike;
+  /** Working days (for the daily average) and the week's pace (for the trend). Default: Monday to Friday, 9 to 17. */
+  workday?: Workday;
   timeZone?: string;
 }
 
@@ -223,20 +210,25 @@ export function summarize(rows: TimelogRow[], o: SummaryOptions): TimesheetView 
   }
   // You always show up, even before logging anything.
   if (o.me && !perDay.has(o.me)) perDay.set(o.me, new Map());
-  const fraction = workFractions(o.now, o.workday ?? { start: '09:00', end: '17:00' }, o.timeZone).week;
+  const w = o.workday ?? DEFAULT_WORKDAY;
+  const fraction = workFractions(o.now, w, o.timeZone).week;
+  // Working days of the averaging period: the daily average is per working day.
+  const working = new Set<string>();
+  for (let d = from; d < monday; d = addDays(d, 1)) if (dayShape(w, d).working) working.add(d);
   const people: PersonHours[] = [];
   for (const [user, days] of perDay) {
-    let week = 0, total = 0, weekdays = 0, any = false;
+    let week = 0, total = 0, onWorkdays = 0, any = false;
     for (const [day, h] of days) {
       if (day >= monday && day <= today) week += h;
       else if (day >= from && day < monday) {
         total += h;
-        if (!isWeekend(day)) weekdays += h;
+        if (working.has(day)) onWorkdays += h;
         any = true;
       }
     }
     const weekAvg = any ? total / weeks : null;
-    people.push({ user, me: user === o.me, today: days.get(today) ?? 0, week, dayAvg: any ? weekdays / (5 * weeks) : null, weekAvg, trend: trendOf(week, fraction, weekAvg) });
+    const dayAvg = any && working.size ? onWorkdays / working.size : null;
+    people.push({ user, me: user === o.me, today: days.get(today) ?? 0, week, dayAvg, weekAvg, trend: trendOf(week, fraction, weekAvg) });
   }
   people.sort((a, b) => Number(b.me) - Number(a.me) || b.today - a.today || b.week - a.week || a.user.localeCompare(b.user));
   return { day: today, people };
@@ -285,10 +277,20 @@ export async function fetchRows(gql: GraphQL, o: { group?: string; username?: st
   return rows;
 }
 
-/** `4.25` → `4.3` (`4,3` in Spanish). */
+const decimals = new Map<string, Intl.NumberFormat>();
+
+/** `4.25` → `4.3` (`4,3` in Spanish): one decimal, in the language's own notation. */
 export function hoursText(h: number, locale = 'en'): string {
-  const s = h.toFixed(1);
-  return /^es/i.test(locale) ? s.replace('.', ',') : s;
+  let f = decimals.get(locale);
+  if (!f) {
+    try {
+      f = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+    } catch {
+      f = new Intl.NumberFormat('en', { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+    }
+    decimals.set(locale, f);
+  }
+  return f.format(h);
 }
 
 /** Weekly totals to the hour: `33.4` → `33`. Four columns don't fit decimals. */

@@ -6,6 +6,7 @@
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { dayKey } from '@kiosko/sdk';
 
 export const DEFAULT_ACTIVITY_DIR = '~/.aimonitor/actividad';
 
@@ -23,11 +24,8 @@ export interface ActivityEvent {
   event: string;
 }
 
-/** `YYYY-MM-DD` in local time. */
-export function dayKey(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+/** `YYYY-MM-DD` in local time (the SDK's). */
+export { dayKey };
 
 export function expandHome(p: string): string {
   return p === '~' || p.startsWith('~/') ? join(homedir(), p.slice(1)) : p;

@@ -85,15 +85,15 @@ export interface FocusInput {
   logged: LoggedEntry[];
   activity: { project: string; total: number }[];
   expected: number;
-  /** Below this, a project's activity is not proposed. */
-  minPendingMin?: number;
+  /** Below this (ms), a project's activity is not proposed. Default 15 min. */
+  minPendingMs?: number;
 }
 
 /** The last piece of a GitLab path or a directory: `acme/web-app` → `web-app`. */
 const leaf = (path: string) => path.split('/').filter(Boolean).at(-1) ?? path;
 
 export function focusView(i: FocusInput): FocusView {
-  const minPending = i.minPendingMin ?? 15;
+  const minPending = (i.minPendingMs ?? 15 * 60_000) / 60_000;
   const summaries = i.logged.map((l) => l.summary).join('\n');
   const meetings = i.meetings.filter((m) => m.endsAt <= i.now && !summaries.includes(meetingMarker(m))).sort((a, b) => a.startsAt - b.startsAt);
   const loggedBy = new Map<string, number>();
@@ -109,12 +109,6 @@ export function focusView(i: FocusInput): FocusView {
   return { logged: i.logged.reduce((s, l) => s + l.hours, 0), expected: i.expected, meetings, projects };
 }
 
-/** "1 h 30 min", "45 min". */
-export function minutesText(min: number): string {
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
-  return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
-}
-
 export const TEXT = {
   loggedToday: { en: 'logged today', es: 'imputado hoy' },
   due: { en: 'due', es: 'toca' },
@@ -123,5 +117,4 @@ export const TEXT = {
   nothing: { en: 'Nothing left to log', es: 'Nada pendiente de imputar' },
   unlogged: { en: 'unlogged', es: 'sin imputar' },
   privateMeeting: { en: 'Meeting (private)', es: 'Reunión (privada)' },
-  more: { en: 'more', es: 'más' },
 } satisfies Record<string, Localized>;

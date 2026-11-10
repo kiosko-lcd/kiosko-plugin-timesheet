@@ -3,12 +3,12 @@
  * week and on average) and, for today, what is still left to log: finished
  * meetings from `calendar/events` and agent activity per project.
  */
-import { defineSource, definePlugin, defineWidget, t, type Localized } from '@kiosko/sdk';
+import { defineSource, definePlugin, defineWidget, drawEmpty, drawMore, listLayout, listOptions, matchFilter, t, type Localized, type Workday } from '@kiosko/sdk';
 import { activityByProject, dayKey, DEFAULT_ACTIVITY_DIR, readActivity, type ProjectActivity } from './activity.ts';
 import { demoActivity, demoMeetings, demoTimelogs } from './demo.ts';
-import { fetchMyTimelogs, focusView, minutesText, TEXT, type LoggedEntry, type MeetingLike } from './focus.ts';
+import { fetchMyTimelogs, focusView, TEXT, type LoggedEntry, type MeetingLike } from './focus.ts';
 import { connect, whoAmI } from './gitlab.ts';
-import { addDays, expectedHours, fetchRows, hoursRound, hoursText, inWorkday, localDay, minutesToEnd, shortName, summarize, type TimelogRow, type Workday } from './timesheet.ts';
+import { addDays, expectedHours, fetchRows, hoursRound, hoursText, inWorkday, localDay, minutesToEnd, shortName, summarize, type PersonHours, type TimelogRow } from './timesheet.ts';
 
 export * from './timesheet.ts';
 export * from './focus.ts';
@@ -48,6 +48,9 @@ export const timelogs = defineSource({
     bin: t.string({ default: 'glab', format: 'path', risk: 'exec', advanced: true, label: { en: 'glab command', es: 'Comando glab' } }),
   }),
   intervalMs: 5 * 60_000,
+  // Up to 30 pages of timelogs for a big group: not more than once a minute.
+  minIntervalMs: 60_000,
+  timeoutMs: 60_000,
   async read({ options: o, signal, now }): Promise<TimelogsData> {
     const gql = connect(o, signal);
     const me = o.me.trim() || (await whoAmI(gql));
@@ -70,48 +73,62 @@ export const activity = defineSource({
   },
   options: t.object({
     dir: t.string({ default: DEFAULT_ACTIVITY_DIR, format: 'path', risk: 'path', label: { en: 'Activity folder', es: 'Carpeta de actividad' } }),
-    gapMin: t.integer({ default: 15, min: 1, max: 120, unit: 'min', advanced: true, label: { en: 'Gap that splits a block', es: 'Hueco que parte un bloque' } }),
-    tailMin: t.integer({ default: 5, min: 0, max: 60, unit: 'min', advanced: true, label: { en: 'Time added after the last event', es: 'Tiempo tras el último evento' } }),
+    gapMs: t.duration({ default: 15 * 60_000, min: 60_000, max: 2 * 3_600_000, advanced: true, label: { en: 'Gap that splits a block', es: 'Hueco que parte un bloque' } }),
+    tailMs: t.duration({ default: 5 * 60_000, min: 0, max: 3_600_000, advanced: true, label: { en: 'Time added after the last event', es: 'Tiempo tras el último evento' } }),
   }),
   intervalMs: 2 * 60_000,
+  // A local file that grows all day: re-reading it every few seconds buys nothing.
+  minIntervalMs: 15_000,
   async read({ options: o, now }): Promise<ActivityData> {
     const day = dayKey(now);
-    return { day, projects: activityByProject(await readActivity(day, o.dir), o.gapMin * 60_000, o.tailMin * 60_000) };
+    return { day, projects: activityByProject(await readActivity(day, o.dir), o.gapMs, o.tailMs) };
   },
   demo: ({ now }) => demoActivity(now),
 });
 
-const clock = (def: string, label: Localized) => t.string({ default: def, placeholder: 'HH:MM', label });
-
-/** The working day, on each widget that needs to know what is due. */
-const workdayFields = () => ({
-  start: clock('09:00', { en: 'Workday starts', es: 'Entrada' }),
-  end: clock('17:00', { en: 'Workday ends', es: 'Salida' }),
-  hours: t.number({ default: 8, min: 0, max: 24, step: 0.25, unit: 'h', label: { en: 'Hours per day', es: 'Horas por jornada' } }),
-  weekly: t.number({ default: 40, min: 0, max: 80, step: 0.5, unit: 'h', label: { en: 'Hours per week', es: 'Horas por semana' } }),
-  fridayEnd: t.string({ placeholder: 'HH:MM', advanced: true, label: { en: 'Friday ends', es: 'Salida del viernes' }, help: { en: 'Empty = like any other day.', es: 'Vacío = como cualquier otro día.' } }),
-  fridayHours: t.number({ default: 0, min: 0, max: 24, step: 0.25, unit: 'h', advanced: true, label: { en: 'Friday hours', es: 'Horas del viernes' } }),
-  holidays: t.list(t.string({ placeholder: 'YYYY-MM-DD', label: { en: 'Day', es: 'Día' } }), { advanced: true, label: { en: 'Holidays', es: 'Festivos' } }),
-});
-
-type WorkdayOptions = { start: string; end: string; hours: number; weekly: number; fridayEnd: string; fridayHours: number; holidays: string[] };
-export const workdayOf = (o: WorkdayOptions): Workday => ({
-  start: o.start || '09:00',
-  end: o.end || '17:00',
-  hours: o.hours,
-  weekly: o.weekly,
-  ...(o.fridayEnd.trim() ? { friday: { end: o.fridayEnd.trim(), hours: o.fridayHours || o.hours } } : {}),
-  holidays: o.holidays,
-});
-
 const timelogsOf = (s: Record<string, unknown>) => s[TIMELOGS] as TimelogsData | undefined;
+
+type Column = 'today' | 'week' | 'dayAvg' | 'weekAvg' | 'trend';
+const COLUMNS: Column[] = ['today', 'week', 'dayAvg', 'weekAvg', 'trend'];
+const COLUMN_NAMES: Record<Column, Localized> = {
+  today: { en: 'Today', es: 'Hoy' },
+  week: { en: 'This week', es: 'Esta semana' },
+  dayAvg: { en: 'Daily average', es: 'Media diaria' },
+  weekAvg: { en: 'Weekly average', es: 'Media semanal' },
+  trend: { en: 'Trend', es: 'Tendencia' },
+};
+/** Column headers: short, four columns have to fit. */
+const COLUMN_HEADS: Record<Column, Localized> = {
+  today: { en: 'today', es: 'hoy' },
+  week: { en: 'wk', es: 'sem' },
+  dayAvg: { en: 'h/day', es: 'h/día' },
+  weekAvg: { en: 'h/wk', es: 'h/sem' },
+  trend: { en: '', es: '' },
+};
+
+/** The columns to draw, in the user's order, each once; empty = all. */
+export const columnsOf = (cols: readonly string[]): Column[] => {
+  const picked = [...new Set(cols)].filter((c): c is Column => (COLUMNS as string[]).includes(c));
+  return picked.length ? picked : COLUMNS;
+};
+
+type HoursOptions = { people: string[]; aliases: Record<string, string> };
+
+/** The people of the table: everyone in the timelogs, through the `people` filter (by username or by alias). */
+export function peopleOf(data: TimelogsData, o: HoursOptions, now: number, workday: Workday): PersonHours[] {
+  const v = summarize(data.rows, { now, me: data.me, weeks: data.weeks, workday });
+  return v.people.filter((p) => {
+    const alias = o.aliases[p.user];
+    return matchFilter(alias ? [p.user, alias] : p.user, o.people);
+  });
+}
 
 export const hours = defineWidget({
   id: 'hours',
   name: { en: 'Hours logged', es: 'Horas imputadas' },
   description: {
-    en: 'Hours logged in GitLab by you and your group: today, this week, daily and weekly averages, and each one\'s trend against themselves. Yours turn green or red against what is due by now.',
-    es: 'Las horas imputadas en GitLab por ti y tu grupo: hoy, la semana, medias diaria y semanal, y la tendencia de cada cual contra sí mismo. Las tuyas, en verde o rojo según lo que toca a esta hora.',
+    en: 'Hours logged in GitLab by you and your group: today, this week, daily and weekly averages, and each one\'s trend against themselves. Yours turn green or red against what is due by now, per your working week in Settings.',
+    es: 'Las horas imputadas en GitLab por ti y tu grupo: hoy, la semana, medias diaria y semanal, y la tendencia de cada cual contra sí mismo. Las tuyas, en verde o rojo según lo que toca a esta hora, según tu jornada de Ajustes.',
   },
   icon: 'clock',
   category: 'dev',
@@ -119,45 +136,55 @@ export const hours = defineWidget({
   size: { min: { w: 280, h: 120 }, preferred: { w: 600, h: 300 } },
   sources: [TIMELOGS],
   options: t.object({
-    ...workdayFields(),
+    ...listOptions(),
+    columns: t.list(t.enum(COLUMNS, { default: 'today', labels: COLUMN_NAMES }), {
+      default: [...COLUMNS],
+      max: COLUMNS.length,
+      label: { en: 'Columns', es: 'Columnas' },
+      help: { en: 'Which figures, in this order. Empty = all.', es: 'Qué cifras, en este orden. Vacío = todas.' },
+    }),
+    people: t.filter({ label: { en: 'People', es: 'Personas' }, help: { en: 'Empty: the whole group. Usernames or patterns, comma-separated (ana.*, !bot-*); an alias works too.', es: 'Vacío: todo el grupo. Usuarios o patrones separados por comas (ana.*, !bot-*); también vale el alias.' } }),
     aliases: t.map({ advanced: true, label: { en: 'Names', es: 'Nombres' }, help: { en: 'Username → what to show. Others show their first three letters.', es: 'Usuario → lo que se muestra. El resto, sus tres primeras letras.' }, keyLabel: { en: 'Username', es: 'Usuario' }, valueLabel: { en: 'Show as', es: 'Mostrar como' } }),
   }),
   redraw: 'minute',
   visible: ({ sources }) => Boolean(timelogsOf(sources)),
-  render(g, { options, sources, now, box, theme, kit, t: tr, locale }) {
+  empty: ({ options, sources, now, workday }) => {
+    const data = timelogsOf(sources);
+    return Boolean(data) && !peopleOf(data!, options, now, workday).length;
+  },
+  render(g, ctx) {
+    const { options, sources, now, box, theme, kit, t: tr, locale, workday } = ctx;
     const data = timelogsOf(sources);
     if (!data) return;
     const { colors, fonts } = theme;
-    const w = workdayOf(options);
-    const v = summarize(data.rows, { now, me: data.me, weeks: data.weeks, workday: w });
-    const pace = expectedHours(now, w);
-    const labels = [tr({ en: 'today', es: 'hoy' }), tr({ en: 'wk', es: 'sem' }), tr({ en: 'h/day', es: 'h/día' }), tr({ en: 'h/wk', es: 'h/sem' }), ''];
+    const people = peopleOf(data, options, now, workday);
+    if (!people.length) return drawEmpty(g, ctx, tr({ en: 'Nobody to show', es: 'Nadie que mostrar' }));
+    const pace = expectedHours(now, workday);
+    const cols = columnsOf(options.columns);
     const headH = Math.min(64, box.h * 0.22);
-    const rowH = Math.max(22, Math.min(64, (box.h - headH) / Math.max(2, v.people.length), box.w / 9));
-    const room = Math.max(1, Math.floor((box.h - headH) / rowH + 0.05));
-    const shown = v.people.length <= room ? v.people : v.people.slice(0, room - 1);
-    const more = v.people.length - shown.length;
+    const plan = listLayout({ ...box, y: box.y + headH, h: box.h - headH }, people.length, options, { sizes: { 'one-line': { min: 22, max: Math.max(22, Math.min(64, box.w / 9)) } }, minRows: 2 });
+    const { rowH } = plan;
     const num = { size: Math.round(rowH * 0.8), family: fonts.sans };
-    const lab = { size: Math.round(headH * 0.36), family: fonts.sans };
+    const lab = { size: Math.max(9, Math.round(headH * 0.36)), family: fonts.sans };
     // Green when you are on pace, red when not; neutral while nothing is due.
     const vsPace = (got: number, due: number | undefined, base: string) => (due === undefined || due <= 0 ? base : got >= due ? colors.ok : colors.alert);
     const trend = { up: ['↑', colors.info], steady: ['→', colors.inkDim], down: ['↓', colors.warn] } as const;
-    const rows = shown.map((p) => ({
-      p,
-      name: p.me ? tr({ en: 'you', es: 'tú' }) : shortName(p.user, options.aliases),
-      cells: [
-        [hoursText(p.today, locale), vsPace(p.today, p.me ? pace.today : undefined, p.today > 0 ? colors.ink : colors.inkDim)],
-        [hoursRound(p.week), vsPace(p.week, p.me ? pace.week : undefined, colors.ink)],
-        [p.dayAvg === null ? '—' : hoursText(p.dayAvg, locale), colors.inkDim],
-        [p.weekAvg === null ? '—' : hoursRound(p.weekAvg), colors.inkDim],
-        p.trend ? trend[p.trend] : ['', colors.inkDim],
-      ] as [string, string][],
-    }));
+    const cell = (p: PersonHours, c: Column): [string, string] => {
+      switch (c) {
+        case 'today': return [hoursText(p.today, locale), vsPace(p.today, p.me ? pace.today : undefined, p.today > 0 ? colors.ink : colors.inkDim)];
+        case 'week': return [hoursRound(p.week), vsPace(p.week, p.me ? pace.week : undefined, colors.ink)];
+        case 'dayAvg': return [p.dayAvg === null ? '—' : hoursText(p.dayAvg, locale), colors.inkDim];
+        case 'weekAvg': return [p.weekAvg === null ? '—' : hoursRound(p.weekAvg), colors.inkDim];
+        case 'trend': return p.trend ? [...trend[p.trend]] : ['', colors.inkDim];
+      }
+    };
+    const rows = people.slice(0, plan.shown).map((p) => ({ p, name: p.me ? tr({ en: 'you', es: 'tú' }) : shortName(p.user, options.aliases), cells: cols.map((c) => cell(p, c)) }));
+    const labels = cols.map((c) => tr(COLUMN_HEADS[c]));
     const colW = labels.map((l, i) => Math.max(kit.measureTracked(g, l, lab), ...rows.map((r) => kit.measureTracked(g, r.cells[i]![0], num))));
-    const longest = Math.max(...rows.map((r) => kit.measureTracked(g, r.name, num)));
+    const longest = Math.max(0, ...rows.map((r) => kit.measureTracked(g, r.name, num)));
     const free = box.w - colW.reduce((a, b) => a + b, 0);
     const nameW = Math.min(longest, free - rowH * 0.3 * colW.length);
-    const air = Math.max(0, (free - nameW) / colW.length);
+    const air = Math.max(0, (free - nameW) / Math.max(1, colW.length));
     const rights: number[] = [];
     let r = box.x + nameW;
     colW.forEach((cw, i) => (rights[i] = r += air + cw));
@@ -165,11 +192,12 @@ export const hours = defineWidget({
     kit.drawTracked(g, `${tr(TEXT.due)} ${hoursText(pace.today, locale)} · ${hoursRound(pace.week)}`, box.x, box.y + lab.size * 1.05, { ...lab, color: colors.inkDim });
     labels.forEach((l, i) => kit.drawTracked(g, l, rights[i]!, box.y + headH * 0.85, { ...lab, color: colors.inkFaint, align: 'right' }));
     rows.forEach(({ p, name, cells }, k) => {
-      const base = box.y + headH + k * rowH + rowH * 0.82;
+      const row = plan.rows[k]!;
+      const base = row.y + rowH * 0.82;
       kit.drawTracked(g, kit.truncate(g, name, nameW, num), box.x, base, { ...num, color: p.me ? colors.accent : colors.ink });
       cells.forEach(([text, color], i) => kit.drawTracked(g, text, rights[i]!, base, { ...num, color, align: 'right' }));
     });
-    if (more) kit.drawTracked(g, `+${more} ${tr(TEXT.more)}`, box.x, box.y + headH + shown.length * rowH + rowH * 0.7, { ...lab, color: colors.inkDim });
+    drawMore(g, ctx, plan);
   },
   demo: ({ now }) => ({ sources: { [TIMELOGS]: demoTimelogs(now) } }),
 });
@@ -181,7 +209,7 @@ export function meetingsToday(v: unknown, now: number): MeetingLike[] {
   return (v as MeetingLike[]).filter((m) => dayKey(m.startsAt) === day);
 }
 
-const focusOf = (sources: Record<string, unknown>, now: number, w: Workday, minPendingMin: number) => {
+const focusOf = (sources: Record<string, unknown>, now: number, w: Workday, minPendingMs: number) => {
   const tl = timelogsOf(sources);
   if (!tl) return null;
   const act = sources[ACTIVITY] as ActivityData | undefined;
@@ -192,16 +220,19 @@ const focusOf = (sources: Record<string, unknown>, now: number, w: Workday, minP
     logged: tl.today.day === day ? tl.today.entries : [],
     activity: act?.day === day ? act.projects : [],
     expected: expectedHours(now, w).today,
-    minPendingMin,
+    minPendingMs,
   });
 };
+
+const HOUR = 3_600_000;
+const MIN = 60_000;
 
 export const focus = defineWidget({
   id: 'focus',
   name: { en: 'Left to log', es: 'Por imputar' },
   description: {
-    en: 'What you have logged today against what is due by now, and what is still unlogged: finished meetings and agent activity per project.',
-    es: 'Lo imputado hoy frente a lo que toca a esta hora, y lo que falta por imputar: reuniones terminadas y actividad con agentes por proyecto.',
+    en: 'What you have logged today against what is due by now (per your working week in Settings), and what is still unlogged: finished meetings and agent activity per project.',
+    es: 'Lo imputado hoy frente a lo que toca a esta hora (según tu jornada de Ajustes), y lo que falta por imputar: reuniones terminadas y actividad con agentes por proyecto.',
   },
   icon: 'list-checks',
   category: 'dev',
@@ -209,41 +240,43 @@ export const focus = defineWidget({
   size: { min: { w: 300, h: 160 }, preferred: { w: 600, h: 420 } },
   sources: [TIMELOGS, ACTIVITY, CALENDAR],
   options: t.object({
-    ...workdayFields(),
-    minPendingMin: t.integer({ default: 15, min: 0, max: 240, unit: 'min', label: { en: 'Smallest activity to propose', es: 'Actividad mínima a proponer' } }),
-    meetingGraceMin: t.integer({ default: 15, min: 0, max: 240, unit: 'min', advanced: true, label: { en: 'Urgent after a meeting for', es: 'Urgente tras una reunión durante' } }),
-    closingMin: t.integer({ default: 30, min: 0, max: 240, unit: 'min', advanced: true, label: { en: 'Urgent before leaving', es: 'Urgente antes de salir' }, help: { en: 'In the last minutes of the day, if hours are still owed.', es: 'En los últimos minutos de la jornada, si aún se deben horas.' } }),
+    ...listOptions(),
+    minPendingMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, label: { en: 'Smallest activity to propose', es: 'Actividad mínima a proponer' } }),
+    debtWarnMs: t.duration({ default: HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: amber from', es: 'Debes: ámbar desde' }, help: { en: 'Hours due by now and not logged yet.', es: 'Horas que tocan a esta hora y aún no están imputadas.' } }),
+    debtAlertMs: t.duration({ default: 2 * HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: red from', es: 'Debes: rojo desde' } }),
+    meetingGraceMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent after a meeting for', es: 'Urgente tras una reunión durante' }, help: { en: '0 = never.', es: '0 = nunca.' } }),
+    closingMs: t.duration({ default: 30 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent before leaving', es: 'Urgente antes de salir' }, help: { en: 'In the last minutes of the day, if hours are still owed. 0 = never.', es: 'En los últimos minutos de la jornada, si aún se deben horas. 0 = nunca.' } }),
   }),
   redraw: 'minute',
-  visible: ({ options, sources, now }) => {
-    const v = focusOf(sources, now, workdayOf(options), options.minPendingMin);
-    return Boolean(v) && (inWorkday(now, workdayOf(options)) || v!.meetings.length > 0 || v!.projects.length > 0);
+  visible: ({ options, sources, now, workday }) => {
+    const v = focusOf(sources, now, workday, options.minPendingMs);
+    return Boolean(v) && (inWorkday(now, workday) || v!.meetings.length > 0 || v!.projects.length > 0);
   },
-  urgent: ({ options, sources, now }) => {
-    const w = workdayOf(options);
-    const v = focusOf(sources, now, w, options.minPendingMin);
+  urgent: ({ options, sources, now, workday }) => {
+    const v = focusOf(sources, now, workday, options.minPendingMs);
     if (!v) return false;
-    if (v.meetings.some((m) => now - m.endsAt <= options.meetingGraceMin * 60_000)) return true;
-    const left = minutesToEnd(now, w);
-    return left !== null && left <= options.closingMin && (v.expected - v.logged >= 0.25 || v.meetings.length > 0);
+    if (options.meetingGraceMs > 0 && v.meetings.some((m) => now - m.endsAt <= options.meetingGraceMs)) return true;
+    const left = minutesToEnd(now, workday);
+    return options.closingMs > 0 && left !== null && left * MIN <= options.closingMs && (v.expected - v.logged >= 0.25 || v.meetings.length > 0);
   },
-  render(g, { options, sources, now, box, theme, kit, t: tr, locale }) {
-    const v = focusOf(sources, now, workdayOf(options), options.minPendingMin);
+  render(g, ctx) {
+    const { options, sources, now, box, theme, kit, fmt, t: tr, locale, workday } = ctx;
+    const v = focusOf(sources, now, workday, options.minPendingMs);
     if (!v) return;
     const { colors, fonts } = theme;
     const f = fonts.sans;
     const k = Math.max(0.45, Math.min(1.6, box.w / 600, box.h / 420));
-    const debt = Math.max(0, v.expected - v.logged);
-    const color = debt >= 2 ? colors.alert : debt >= 1 ? colors.warn : colors.ok;
+    const debt = Math.max(0, v.expected - v.logged) * HOUR;
+    const color = debt >= options.debtAlertMs && options.debtAlertMs > 0 ? colors.alert : debt >= options.debtWarnMs && options.debtWarnMs > 0 ? colors.warn : colors.ok;
     const h = (n: number) => `${hoursText(n, locale)} h`;
     // Top: logged, big, in the colour of what is owed; on the right, what is due.
     const lw = kit.drawTracked(g, h(v.logged), box.x, box.y + 58 * k, { size: 64 * k, family: f, color });
     if (box.w - lw > 330 * k) kit.drawTracked(g, tr(TEXT.loggedToday), box.x + lw + 16 * k, box.y + 56 * k, { size: 26 * k, family: f, color: colors.inkDim });
     kit.drawTracked(g, `${tr(TEXT.due)} ${h(v.expected)}`, box.x + box.w, box.y + 28 * k, { size: 28 * k, family: f, color: colors.inkDim, align: 'right' });
-    if (debt >= 0.1) kit.drawTracked(g, `${tr(TEXT.left)} ${h(debt)}`, box.x + box.w, box.y + 60 * k, { size: 30 * k, family: f, color, align: 'right' });
+    if (debt >= 0.1 * HOUR) kit.drawTracked(g, `${tr(TEXT.left)} ${h(debt / HOUR)}`, box.x + box.w, box.y + 60 * k, { size: 30 * k, family: f, color, align: 'right' });
     const rows: [string, string, string][] = [
-      ...v.meetings.map((m): [string, string, string] => [m.private ? tr(TEXT.privateMeeting) : m.title, minutesText(Math.round((m.endsAt - m.startsAt) / 60_000)), colors.warn]),
-      ...v.projects.map((p): [string, string, string] => [p.project, `${minutesText(p.pending)} ${tr(TEXT.unlogged)}`, colors.info]),
+      ...v.meetings.map((m): [string, string, string] => [m.private ? tr(TEXT.privateMeeting) : m.title, fmt.duration(m.endsAt - m.startsAt, { round: 'nearest', compact: true }), colors.warn]),
+      ...v.projects.map((p): [string, string, string] => [p.project, `${fmt.duration(p.pending * MIN)} ${tr(TEXT.unlogged)}`, colors.info]),
     ];
     let y = box.y + 92 * k;
     if (!rows.length) {
@@ -252,19 +285,19 @@ export const focus = defineWidget({
     }
     kit.drawTracked(g, tr(TEXT.notLogged), box.x, y + 24 * k, { size: 22 * k, family: f, color: colors.inkDim });
     y += 30 * k;
-    const rowH = 46 * k;
-    const all = Math.floor((box.y + box.h - y) / rowH);
-    const room = rows.length > all ? Math.max(0, Math.floor((box.y + box.h - 30 * k - y) / rowH)) : all;
-    rows.slice(0, room).forEach(([name, what, col], i) => {
-      const ry = y + i * rowH + 36 * k;
+    const plan = listLayout({ ...box, y, h: box.y + box.h - y }, rows.length, options, { sizes: { 'one-line': { min: Math.max(18, 30 * k), max: 46 * k } } });
+    const u = plan.rowH / 46;
+    plan.rows.forEach((row, i) => {
+      const [name, what, col] = rows[i]!;
+      const ry = row.y + 36 * u;
       g.fillStyle = col;
       g.beginPath();
-      g.arc(box.x + 8 * k, ry - 11 * k, 7 * k, 0, Math.PI * 2);
+      g.arc(box.x + 8 * u, ry - 11 * u, 7 * u, 0, Math.PI * 2);
       g.fill();
-      const ww = kit.drawTracked(g, what, box.x + box.w, ry, { size: 28 * k, family: f, color: colors.inkDim, align: 'right' });
-      kit.drawTracked(g, kit.truncate(g, name, box.w - ww - 44 * k, { size: 34 * k, family: f }), box.x + 26 * k, ry, { size: 34 * k, family: f, color: colors.ink });
+      const ww = kit.drawTracked(g, what, box.x + box.w, ry, { size: 28 * u, family: f, color: colors.inkDim, align: 'right' });
+      kit.drawTracked(g, kit.truncate(g, name, box.w - ww - 44 * u, { size: 34 * u, family: f }), box.x + 26 * u, ry, { size: 34 * u, family: f, color: colors.ink });
     });
-    if (rows.length > room) kit.drawTracked(g, `+${rows.length - room} ${tr(TEXT.more)}`, box.x + 26 * k, box.y + box.h - 4 * k, { size: 24 * k, family: f, color: colors.inkDim });
+    drawMore(g, ctx, plan, { indent: 26 * u });
   },
   demo: ({ now }) => ({ sources: { [TIMELOGS]: demoTimelogs(now), [ACTIVITY]: demoActivity(now), [CALENDAR]: demoMeetings(now) } }),
 });

@@ -27,6 +27,7 @@ export function graphqlUrl(host: string): string {
   return `${/^https?:\/\//.test(h) ? h : `https://${h}`}/api/graphql`;
 }
 
+/** Queries GitLab until `signal` aborts (Kiosko aborts it after the source's `timeoutMs`). */
 export function connect(c: Connection, signal: AbortSignal): GraphQL {
   if (c.token.trim()) {
     return async (query) => {
@@ -34,14 +35,14 @@ export function connect(c: Connection, signal: AbortSignal): GraphQL {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.token.trim()}` },
         body: JSON.stringify({ query }),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+        signal,
       });
       if (!res.ok) throw new Error(`GitLab HTTP ${res.status}`);
       return res.text();
     };
   }
   const host = c.host.trim() ? ['--hostname', c.host.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '')] : [];
-  return async (query) => (await execFileAsync(c.bin || 'glab', ['api', 'graphql', '-f', `query=${query}`, ...host], { timeout: 20_000, maxBuffer: 8_000_000, signal })).stdout;
+  return async (query) => (await execFileAsync(c.bin || 'glab', ['api', 'graphql', '-f', `query=${query}`, ...host], { maxBuffer: 8_000_000, signal })).stdout;
 }
 
 /** Throws the first GraphQL error, if any; returns `data`. */
