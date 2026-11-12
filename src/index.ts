@@ -305,7 +305,7 @@ export const focus = defineWidget({
 export default definePlugin({
   id: 'timesheet',
   name: { en: 'Timesheet', es: 'Imputación de horas' },
-  version: '0.1.0',
+  version: '0.2.0',
   description: { en: 'Hours logged in GitLab, yours and your group\'s, and what is still left to log today.', es: 'Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy.' },
   author: 'Kiosko',
   license: 'MIT',
