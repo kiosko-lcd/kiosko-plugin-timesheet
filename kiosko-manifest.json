@@ -1,0 +1,617 @@
+{
+  "manifest": 1,
+  "id": "timesheet",
+  "package": "kiosko-plugin-timesheet",
+  "name": {
+    "en": "Timesheet",
+    "es": "Imputación de horas"
+  },
+  "version": "0.2.0",
+  "description": {
+    "en": "Hours logged in GitLab, yours and your group's, and what is still left to log today.",
+    "es": "Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy."
+  },
+  "author": "Kiosko",
+  "license": "MIT",
+  "homepage": "https://github.com/kiosko-lcd/kiosko-plugin-timesheet#readme",
+  "repository": "https://github.com/kiosko-lcd/kiosko-plugin-timesheet.git",
+  "icon": "clock",
+  "sdk": "^0.2.0",
+  "platforms": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "languages": [
+    "en",
+    "es"
+  ],
+  "categories": [
+    "dev"
+  ],
+  "tags": [
+    "gitlab",
+    "timesheet",
+    "horas",
+    "imputación",
+    "focus"
+  ],
+  "permissions": {
+    "network": [
+      "gitlab.com",
+      "user"
+    ],
+    "exec": [
+      "glab"
+    ],
+    "files": [
+      "~/.aimonitor/actividad"
+    ]
+  },
+  "riskyOptions": [
+    {
+      "path": "timesheet/timelogs: host",
+      "risk": [
+        "network"
+      ],
+      "secret": false
+    },
+    {
+      "path": "timesheet/timelogs: token",
+      "risk": [],
+      "secret": true
+    },
+    {
+      "path": "timesheet/timelogs: bin",
+      "risk": [
+        "exec"
+      ],
+      "secret": false
+    },
+    {
+      "path": "timesheet/activity: dir",
+      "risk": [
+        "path"
+      ],
+      "secret": false
+    }
+  ],
+  "requires": [],
+  "optional": [
+    {
+      "type": "calendar/events",
+      "plugin": "calendar"
+    }
+  ],
+  "widgets": [
+    {
+      "type": "timesheet/hours",
+      "name": {
+        "en": "Hours logged",
+        "es": "Horas imputadas"
+      },
+      "description": {
+        "en": "Hours logged in GitLab by you and your group: today, this week, daily and weekly averages, and each one's trend against themselves. Yours turn green or red against what is due by now, per your working week in Settings.",
+        "es": "Las horas imputadas en GitLab por ti y tu grupo: hoy, la semana, medias diaria y semanal, y la tendencia de cada cual contra sí mismo. Las tuyas, en verde o rojo según lo que toca a esta hora, según tu jornada de Ajustes."
+      },
+      "icon": "clock",
+      "category": "dev",
+      "tags": [
+        "gitlab",
+        "timesheet",
+        "horas",
+        "imputación"
+      ],
+      "size": {
+        "min": {
+          "w": 280,
+          "h": 120
+        },
+        "preferred": {
+          "w": 600,
+          "h": 300
+        }
+      },
+      "chrome": "card",
+      "sources": [
+        "timesheet/timelogs"
+      ],
+      "options": {
+        "default": {
+          "rows": 0,
+          "columns": [
+            "today",
+            "week",
+            "dayAvg",
+            "weekAvg",
+            "trend"
+          ],
+          "people": [],
+          "aliases": {}
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "rows": {
+            "title": "Rows",
+            "description": "0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in \"+N more\".",
+            "default": 0,
+            "x-ui": {
+              "label": {
+                "en": "Rows",
+                "es": "Filas"
+              },
+              "help": {
+                "en": "0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in \"+N more\".",
+                "es": "0 = las que quepan. Con un número se ven esas, en filas de un tamaño legible (menos si la tesela no da para ellas); el resto se cuenta en «+N más»."
+              }
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "columns": {
+            "title": "Columns",
+            "description": "Which figures, in this order. Empty = all.",
+            "default": [
+              "today",
+              "week",
+              "dayAvg",
+              "weekAvg",
+              "trend"
+            ],
+            "x-ui": {
+              "label": {
+                "en": "Columns",
+                "es": "Columnas"
+              },
+              "help": {
+                "en": "Which figures, in this order. Empty = all.",
+                "es": "Qué cifras, en este orden. Vacío = todas."
+              }
+            },
+            "type": "array",
+            "items": {
+              "default": "today",
+              "x-ui": {
+                "labels": {
+                  "today": {
+                    "en": "Today",
+                    "es": "Hoy"
+                  },
+                  "week": {
+                    "en": "This week",
+                    "es": "Esta semana"
+                  },
+                  "dayAvg": {
+                    "en": "Daily average",
+                    "es": "Media diaria"
+                  },
+                  "weekAvg": {
+                    "en": "Weekly average",
+                    "es": "Media semanal"
+                  },
+                  "trend": {
+                    "en": "Trend",
+                    "es": "Tendencia"
+                  }
+                }
+              },
+              "type": "string",
+              "enum": [
+                "today",
+                "week",
+                "dayAvg",
+                "weekAvg",
+                "trend"
+              ]
+            },
+            "maxItems": 5
+          },
+          "people": {
+            "title": "People",
+            "description": "Empty: the whole group. Usernames or patterns, comma-separated (ana.*, !bot-*); an alias works too.",
+            "default": [],
+            "x-ui": {
+              "label": {
+                "en": "People",
+                "es": "Personas"
+              },
+              "help": {
+                "en": "Empty: the whole group. Usernames or patterns, comma-separated (ana.*, !bot-*); an alias works too.",
+                "es": "Vacío: todo el grupo. Usuarios o patrones separados por comas (ana.*, !bot-*); también vale el alias."
+              },
+              "widget": "filter"
+            },
+            "type": "array",
+            "items": {
+              "default": "",
+              "x-ui": {
+                "placeholder": "name, group/*, !old-*"
+              },
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          "aliases": {
+            "title": "Names",
+            "description": "Username → what to show. Others show their first three letters.",
+            "default": {},
+            "x-ui": {
+              "label": {
+                "en": "Names",
+                "es": "Nombres"
+              },
+              "help": {
+                "en": "Username → what to show. Others show their first three letters.",
+                "es": "Usuario → lo que se muestra. El resto, sus tres primeras letras."
+              },
+              "advanced": true
+            },
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "screenshot": "docs/hours.png",
+      "animated": false,
+      "urgent": false
+    },
+    {
+      "type": "timesheet/focus",
+      "name": {
+        "en": "Left to log",
+        "es": "Por imputar"
+      },
+      "description": {
+        "en": "What you have logged today against what is due by now (per your working week in Settings), and what is still unlogged: finished meetings and agent activity per project.",
+        "es": "Lo imputado hoy frente a lo que toca a esta hora (según tu jornada de Ajustes), y lo que falta por imputar: reuniones terminadas y actividad con agentes por proyecto."
+      },
+      "icon": "list-checks",
+      "category": "dev",
+      "tags": [
+        "gitlab",
+        "timesheet",
+        "imputación",
+        "focus"
+      ],
+      "size": {
+        "min": {
+          "w": 300,
+          "h": 160
+        },
+        "preferred": {
+          "w": 600,
+          "h": 420
+        }
+      },
+      "chrome": "card",
+      "sources": [
+        "timesheet/timelogs",
+        "timesheet/activity",
+        "calendar/events"
+      ],
+      "options": {
+        "default": {
+          "rows": 0,
+          "minPendingMs": 900000,
+          "debtWarnMs": 3600000,
+          "debtAlertMs": 7200000,
+          "meetingGraceMs": 900000,
+          "closingMs": 1800000
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "rows": {
+            "title": "Rows",
+            "description": "0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in \"+N more\".",
+            "default": 0,
+            "x-ui": {
+              "label": {
+                "en": "Rows",
+                "es": "Filas"
+              },
+              "help": {
+                "en": "0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in \"+N more\".",
+                "es": "0 = las que quepan. Con un número se ven esas, en filas de un tamaño legible (menos si la tesela no da para ellas); el resto se cuenta en «+N más»."
+              }
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "minPendingMs": {
+            "title": "Smallest activity to propose",
+            "default": 900000,
+            "x-ui": {
+              "label": {
+                "en": "Smallest activity to propose",
+                "es": "Actividad mínima a proponer"
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 14400000
+          },
+          "debtWarnMs": {
+            "title": "Owed: amber from",
+            "description": "Hours due by now and not logged yet.",
+            "default": 3600000,
+            "x-ui": {
+              "label": {
+                "en": "Owed: amber from",
+                "es": "Debes: ámbar desde"
+              },
+              "help": {
+                "en": "Hours due by now and not logged yet.",
+                "es": "Horas que tocan a esta hora y aún no están imputadas."
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 28800000
+          },
+          "debtAlertMs": {
+            "title": "Owed: red from",
+            "default": 7200000,
+            "x-ui": {
+              "label": {
+                "en": "Owed: red from",
+                "es": "Debes: rojo desde"
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 28800000
+          },
+          "meetingGraceMs": {
+            "title": "Urgent after a meeting for",
+            "description": "0 = never.",
+            "default": 900000,
+            "x-ui": {
+              "label": {
+                "en": "Urgent after a meeting for",
+                "es": "Urgente tras una reunión durante"
+              },
+              "help": {
+                "en": "0 = never.",
+                "es": "0 = nunca."
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 14400000
+          },
+          "closingMs": {
+            "title": "Urgent before leaving",
+            "description": "In the last minutes of the day, if hours are still owed. 0 = never.",
+            "default": 1800000,
+            "x-ui": {
+              "label": {
+                "en": "Urgent before leaving",
+                "es": "Urgente antes de salir"
+              },
+              "help": {
+                "en": "In the last minutes of the day, if hours are still owed. 0 = never.",
+                "es": "En los últimos minutos de la jornada, si aún se deben horas. 0 = nunca."
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 14400000
+          }
+        }
+      },
+      "screenshot": "docs/focus.png",
+      "animated": false,
+      "urgent": true
+    }
+  ],
+  "sources": [
+    {
+      "type": "timesheet/timelogs",
+      "name": {
+        "en": "GitLab timelogs",
+        "es": "Imputaciones de GitLab"
+      },
+      "description": {
+        "en": "Hours logged in GitLab by you and your group over the last weeks, and your own entries of today, through glab or a token.",
+        "es": "Las horas imputadas en GitLab por ti y tu grupo en las últimas semanas, y tus imputaciones de hoy, con glab o con un token."
+      },
+      "polled": true,
+      "intervalMs": 300000,
+      "options": {
+        "default": {
+          "host": "",
+          "token": "",
+          "group": "",
+          "me": "",
+          "weeks": 4,
+          "bin": "glab"
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "host": {
+            "title": "GitLab host",
+            "description": "Empty = glab's default host (gitlab.com with a token).",
+            "default": "",
+            "x-ui": {
+              "label": {
+                "en": "GitLab host",
+                "es": "Servidor de GitLab"
+              },
+              "help": {
+                "en": "Empty = glab's default host (gitlab.com with a token).",
+                "es": "Vacío = el servidor por defecto de glab (gitlab.com con token)."
+              },
+              "placeholder": "gitlab.com"
+            },
+            "x-risk": "network",
+            "type": "string"
+          },
+          "token": {
+            "title": "Access token",
+            "description": "A personal access token with read_api. Empty = use the glab CLI and its login. Secret: leave it empty (or a placeholder such as \"<token>\"). Kiosko keeps the value it already has, or asks for it in the editor.",
+            "default": "",
+            "x-ui": {
+              "label": {
+                "en": "Access token",
+                "es": "Token de acceso"
+              },
+              "help": {
+                "en": "A personal access token with read_api. Empty = use the glab CLI and its login.",
+                "es": "Un token personal con read_api. Vacío = usar el CLI glab y su sesión."
+              },
+              "secret": true
+            },
+            "x-secret": true,
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "description": "Full path of the GitLab group whose hours to show. Empty = only yours.",
+            "default": "",
+            "x-ui": {
+              "label": {
+                "en": "Group",
+                "es": "Grupo"
+              },
+              "help": {
+                "en": "Full path of the GitLab group whose hours to show. Empty = only yours.",
+                "es": "Ruta completa del grupo de GitLab cuyas horas mostrar. Vacío = sólo las tuyas."
+              },
+              "placeholder": "acme/team"
+            },
+            "type": "string"
+          },
+          "me": {
+            "title": "Your username",
+            "description": "Empty = the logged-in user.",
+            "default": "",
+            "x-ui": {
+              "label": {
+                "en": "Your username",
+                "es": "Tu usuario"
+              },
+              "help": {
+                "en": "Empty = the logged-in user.",
+                "es": "Vacío = el usuario con sesión iniciada."
+              },
+              "advanced": true
+            },
+            "type": "string"
+          },
+          "weeks": {
+            "title": "Weeks for the averages",
+            "default": 4,
+            "x-ui": {
+              "label": {
+                "en": "Weeks for the averages",
+                "es": "Semanas para las medias"
+              }
+            },
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "bin": {
+            "title": "glab command",
+            "default": "glab",
+            "x-ui": {
+              "label": {
+                "en": "glab command",
+                "es": "Comando glab"
+              },
+              "advanced": true,
+              "format": "path"
+            },
+            "x-risk": "exec",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "type": "timesheet/activity",
+      "name": {
+        "en": "Agent activity",
+        "es": "Actividad de agentes"
+      },
+      "description": {
+        "en": "Today's work blocks per project, from the agent hook's activity log (one JSONL file per day).",
+        "es": "Los bloques de trabajo de hoy por proyecto, del registro de actividad del hook de agentes (un JSONL por día)."
+      },
+      "polled": true,
+      "intervalMs": 120000,
+      "options": {
+        "default": {
+          "dir": "~/.aimonitor/actividad",
+          "gapMs": 900000,
+          "tailMs": 300000
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "dir": {
+            "title": "Activity folder",
+            "default": "~/.aimonitor/actividad",
+            "x-ui": {
+              "label": {
+                "en": "Activity folder",
+                "es": "Carpeta de actividad"
+              },
+              "format": "path"
+            },
+            "x-risk": "path",
+            "type": "string"
+          },
+          "gapMs": {
+            "title": "Gap that splits a block",
+            "default": 900000,
+            "x-ui": {
+              "label": {
+                "en": "Gap that splits a block",
+                "es": "Hueco que parte un bloque"
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 60000,
+            "maximum": 7200000
+          },
+          "tailMs": {
+            "title": "Time added after the last event",
+            "default": 300000,
+            "x-ui": {
+              "label": {
+                "en": "Time added after the last event",
+                "es": "Tiempo tras el último evento"
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3600000
+          }
+        }
+      }
+    }
+  ],
+  "interludes": [],
+  "templates": []
+}
