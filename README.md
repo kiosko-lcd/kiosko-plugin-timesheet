@@ -21,6 +21,14 @@ npm install --prefix ~/.config/kiosko/plugins kiosko-plugin-timesheet
 - [`glab`](https://gitlab.com/gitlab-org/cli) logged in, or a personal access token with `read_api` in the `timesheet/timelogs` source options.
 - For *Left to log*: the `calendar/events` source from [kiosko-plugin-calendar](../kiosko-plugin-calendar) for meetings, and the activity log the aimonitor agent hook writes to `~/.aimonitor/actividad` for agent work.
 
+## What it does on your machine
+
+- **Internet**: contacts `gitlab.com`, the ones you set in its options.
+- **Runs**: `glab`.
+- **Reads**: `~/.aimonitor/actividad`.
+
+- Uses `calendar/events` from [kiosko-plugin-calendar](../kiosko-plugin-calendar) when it is there.
+
 ## Widgets
 
 ### Hours logged — `timesheet/hours`

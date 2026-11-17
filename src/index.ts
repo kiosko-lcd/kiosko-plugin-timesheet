@@ -181,7 +181,9 @@ export const hours = defineWidget({
     const rows = people.slice(0, plan.shown).map((p) => ({ p, name: p.me ? tr({ en: 'you', es: 'tú' }) : shortName(p.user, options.aliases), cells: cols.map((c) => cell(p, c)) }));
     const labels = cols.map((c) => tr(COLUMN_HEADS[c]));
     const colW = labels.map((l, i) => Math.max(kit.measureTracked(g, l, lab), ...rows.map((r) => kit.measureTracked(g, r.cells[i]![0], num))));
-    const longest = Math.max(0, ...rows.map((r) => kit.measureTracked(g, r.name, num)));
+    // Names start a little in (the tail of a j would leave the box): their column counts it.
+    const inset = Math.ceil(num.size * 0.08);
+    const longest = Math.max(0, ...rows.map((r) => kit.measureTracked(g, r.name, num))) + inset;
     const free = box.w - colW.reduce((a, b) => a + b, 0);
     const nameW = Math.min(longest, free - rowH * 0.3 * colW.length);
     const air = Math.max(0, (free - nameW) / Math.max(1, colW.length));
@@ -194,7 +196,7 @@ export const hours = defineWidget({
     rows.forEach(({ p, name, cells }, k) => {
       const row = plan.rows[k]!;
       const base = row.y + rowH * 0.82;
-      kit.drawTracked(g, kit.truncate(g, name, nameW, num), box.x, base, { ...num, color: p.me ? colors.accent : colors.ink });
+      kit.drawTracked(g, kit.truncate(g, name, nameW - inset, num), box.x + inset, base, { ...num, color: p.me ? colors.accent : colors.ink });
       cells.forEach(([text, color], i) => kit.drawTracked(g, text, rights[i]!, base, { ...num, color, align: 'right' }));
     });
     drawMore(g, ctx, plan);
@@ -305,7 +307,10 @@ export const focus = defineWidget({
 export default definePlugin({
   id: 'timesheet',
   name: { en: 'Timesheet', es: 'Imputación de horas' },
-  version: '0.2.0',
+  version: '0.2.1',
+  sdk: '^0.2.0',
+  permissions: { network: ['gitlab.com', 'user'], exec: ['glab'], files: ['~/.aimonitor/actividad'] },
+  optional: ['calendar/events'],
   description: { en: 'Hours logged in GitLab, yours and your group\'s, and what is still left to log today.', es: 'Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy.' },
   author: 'Kiosko',
   license: 'MIT',
