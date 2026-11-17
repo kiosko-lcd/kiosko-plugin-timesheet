@@ -307,7 +307,7 @@ export const focus = defineWidget({
 export default definePlugin({
   id: 'timesheet',
   name: { en: 'Timesheet', es: 'Imputación de horas' },
-  version: '0.2.0',
+  version: '0.2.1',
   sdk: '^0.2.0',
   permissions: { network: ['gitlab.com', 'user'], exec: ['glab'], files: ['~/.aimonitor/actividad'] },
   optional: ['calendar/events'],
