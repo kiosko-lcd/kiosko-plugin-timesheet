@@ -64,7 +64,7 @@ export const timelogs = defineSource({
     ]);
     return { me, weeks: o.weeks, rows, today: { day, entries } };
   },
-  demo: ({ now }) => demoTimelogs(now),
+  demo: ({ now, locale }) => demoTimelogs(now, locale),
 });
 
 export const activity = defineSource({
@@ -225,7 +225,7 @@ export const hours = defineWidget({
     });
     drawMore(g, ctx, plan);
   },
-  demo: ({ now }) => ({ sources: { [TIMELOGS]: demoTimelogs(now) } }),
+  demo: ({ now, locale }) => ({ sources: { [TIMELOGS]: demoTimelogs(now, locale) } }),
 });
 
 /** Today's meetings from the calendar source (it may carry the next days too). */
@@ -328,7 +328,7 @@ export const focus = defineWidget({
     });
     drawMore(g, ctx, plan, { indent: 26 * u });
   },
-  demo: ({ now }) => ({ sources: { [TIMELOGS]: demoTimelogs(now), [ACTIVITY]: demoActivity(now), [CALENDAR]: demoMeetings(now) } }),
+  demo: ({ now, locale }) => ({ sources: { [TIMELOGS]: demoTimelogs(now, locale), [ACTIVITY]: demoActivity(now), [CALENDAR]: demoMeetings(now, locale) } }),
 });
 
 export default definePlugin({
