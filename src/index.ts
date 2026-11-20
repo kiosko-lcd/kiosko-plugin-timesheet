@@ -34,18 +34,20 @@ const CALENDAR = 'calendar/events';
 
 export const timelogs = defineSource({
   id: 'timelogs',
-  name: { en: 'GitLab timelogs', es: 'Imputaciones de GitLab' },
+  name: { en: 'GitLab timelogs', es: 'Imputaciones de GitLab', 'zh-Hant': 'GitLab 工時紀錄', 'zh-Hans': 'GitLab 工时记录' },
   description: {
     en: 'Hours logged in GitLab by you and your group over the last weeks, and your own entries of today, through glab or a token.',
     es: 'Las horas imputadas en GitLab por ti y tu grupo en las últimas semanas, y tus imputaciones de hoy, con glab o con un token.',
+    'zh-Hant': '你和你的群組最近幾週在 GitLab 登記的工時，以及你今天的登記項目，透過 glab 或權杖取得。',
+    'zh-Hans': '你和你的群组最近几周在 GitLab 登记的工时，以及你今天的登记条目，通过 glab 或令牌获取。',
   },
   options: t.object({
-    host: t.string({ placeholder: 'gitlab.com', risk: 'network', label: { en: 'GitLab host', es: 'Servidor de GitLab' }, help: { en: 'Empty = glab\'s default host (gitlab.com with a token).', es: 'Vacío = el servidor por defecto de glab (gitlab.com con token).' } }),
-    token: t.string({ secret: true, label: { en: 'Access token', es: 'Token de acceso' }, help: { en: 'A personal access token with read_api. Empty = use the glab CLI and its login.', es: 'Un token personal con read_api. Vacío = usar el CLI glab y su sesión.' } }),
-    group: t.string({ placeholder: 'acme/team', label: { en: 'Group', es: 'Grupo' }, help: { en: 'Full path of the GitLab group whose hours to show. Empty = only yours.', es: 'Ruta completa del grupo de GitLab cuyas horas mostrar. Vacío = sólo las tuyas.' } }),
-    me: t.string({ advanced: true, label: { en: 'Your username', es: 'Tu usuario' }, help: { en: 'Empty = the logged-in user.', es: 'Vacío = el usuario con sesión iniciada.' } }),
-    weeks: t.integer({ default: 4, min: 1, max: 12, label: { en: 'Weeks for the averages', es: 'Semanas para las medias' } }),
-    bin: t.string({ default: 'glab', format: 'path', risk: 'exec', advanced: true, label: { en: 'glab command', es: 'Comando glab' } }),
+    host: t.string({ placeholder: 'gitlab.com', risk: 'network', label: { en: 'GitLab host', es: 'Servidor de GitLab', 'zh-Hant': 'GitLab 主機', 'zh-Hans': 'GitLab 主机' }, help: { en: 'Empty = glab\'s default host (gitlab.com with a token).', es: 'Vacío = el servidor por defecto de glab (gitlab.com con token).', 'zh-Hant': '留空 = glab 的預設主機（使用權杖時為 gitlab.com）。', 'zh-Hans': '留空 = glab 的默认主机（使用令牌时为 gitlab.com）。' } }),
+    token: t.string({ secret: true, label: { en: 'Access token', es: 'Token de acceso', 'zh-Hant': '存取權杖', 'zh-Hans': '访问令牌' }, help: { en: 'A personal access token with read_api. Empty = use the glab CLI and its login.', es: 'Un token personal con read_api. Vacío = usar el CLI glab y su sesión.', 'zh-Hant': '具 read_api 權限的個人存取權杖。留空 = 使用 glab CLI 及其登入狀態。', 'zh-Hans': '具有 read_api 权限的个人访问令牌。留空 = 使用 glab CLI 及其登录状态。' } }),
+    group: t.string({ placeholder: 'acme/team', label: { en: 'Group', es: 'Grupo', 'zh-Hant': '群組', 'zh-Hans': '群组' }, help: { en: 'Full path of the GitLab group whose hours to show. Empty = only yours.', es: 'Ruta completa del grupo de GitLab cuyas horas mostrar. Vacío = sólo las tuyas.', 'zh-Hant': '要顯示工時的 GitLab 群組完整路徑。留空 = 只顯示你的。', 'zh-Hans': '要显示工时的 GitLab 群组完整路径。留空 = 只显示你的。' } }),
+    me: t.string({ advanced: true, label: { en: 'Your username', es: 'Tu usuario', 'zh-Hant': '你的使用者名稱', 'zh-Hans': '你的用户名' }, help: { en: 'Empty = the logged-in user.', es: 'Vacío = el usuario con sesión iniciada.', 'zh-Hant': '留空 = 目前登入的使用者。', 'zh-Hans': '留空 = 当前登录的用户。' } }),
+    weeks: t.integer({ default: 4, min: 1, max: 12, label: { en: 'Weeks for the averages', es: 'Semanas para las medias', 'zh-Hant': '計算平均的週數', 'zh-Hans': '计算平均值的周数' } }),
+    bin: t.string({ default: 'glab', format: 'path', risk: 'exec', advanced: true, label: { en: 'glab command', es: 'Comando glab', 'zh-Hant': 'glab 指令', 'zh-Hans': 'glab 命令' } }),
   }),
   intervalMs: 5 * 60_000,
   // Up to 30 pages of timelogs for a big group: not more than once a minute.
@@ -66,15 +68,17 @@ export const timelogs = defineSource({
 
 export const activity = defineSource({
   id: 'activity',
-  name: { en: 'Agent activity', es: 'Actividad de agentes' },
+  name: { en: 'Agent activity', es: 'Actividad de agentes', 'zh-Hant': '代理活動', 'zh-Hans': '智能体活动' },
   description: {
     en: 'Today\'s work blocks per project, from the agent hook\'s activity log (one JSONL file per day).',
     es: 'Los bloques de trabajo de hoy por proyecto, del registro de actividad del hook de agentes (un JSONL por día).',
+    'zh-Hant': '今天各專案的工作區塊，取自代理 hook 的活動紀錄（每天一個 JSONL 檔案）。',
+    'zh-Hans': '今天各项目的工作区块，取自智能体 hook 的活动日志（每天一个 JSONL 文件）。',
   },
   options: t.object({
-    dir: t.string({ default: DEFAULT_ACTIVITY_DIR, format: 'path', risk: 'path', label: { en: 'Activity folder', es: 'Carpeta de actividad' } }),
-    gapMs: t.duration({ default: 15 * 60_000, min: 60_000, max: 2 * 3_600_000, advanced: true, label: { en: 'Gap that splits a block', es: 'Hueco que parte un bloque' } }),
-    tailMs: t.duration({ default: 5 * 60_000, min: 0, max: 3_600_000, advanced: true, label: { en: 'Time added after the last event', es: 'Tiempo tras el último evento' } }),
+    dir: t.string({ default: DEFAULT_ACTIVITY_DIR, format: 'path', risk: 'path', label: { en: 'Activity folder', es: 'Carpeta de actividad', 'zh-Hant': '活動資料夾', 'zh-Hans': '活动文件夹' } }),
+    gapMs: t.duration({ default: 15 * 60_000, min: 60_000, max: 2 * 3_600_000, advanced: true, label: { en: 'Gap that splits a block', es: 'Hueco que parte un bloque', 'zh-Hant': '分割區塊的間隔', 'zh-Hans': '拆分区块的间隔' } }),
+    tailMs: t.duration({ default: 5 * 60_000, min: 0, max: 3_600_000, advanced: true, label: { en: 'Time added after the last event', es: 'Tiempo tras el último evento', 'zh-Hant': '最後一個事件後追加的時間', 'zh-Hans': '最后一个事件后追加的时间' } }),
   }),
   intervalMs: 2 * 60_000,
   // A local file that grows all day: re-reading it every few seconds buys nothing.
@@ -91,19 +95,19 @@ const timelogsOf = (s: Record<string, unknown>) => s[TIMELOGS] as TimelogsData |
 type Column = 'today' | 'week' | 'dayAvg' | 'weekAvg' | 'trend';
 const COLUMNS: Column[] = ['today', 'week', 'dayAvg', 'weekAvg', 'trend'];
 const COLUMN_NAMES: Record<Column, Localized> = {
-  today: { en: 'Today', es: 'Hoy' },
-  week: { en: 'This week', es: 'Esta semana' },
-  dayAvg: { en: 'Daily average', es: 'Media diaria' },
-  weekAvg: { en: 'Weekly average', es: 'Media semanal' },
-  trend: { en: 'Trend', es: 'Tendencia' },
+  today: { en: 'Today', es: 'Hoy', 'zh-Hant': '今天', 'zh-Hans': '今天' },
+  week: { en: 'This week', es: 'Esta semana', 'zh-Hant': '本週', 'zh-Hans': '本周' },
+  dayAvg: { en: 'Daily average', es: 'Media diaria', 'zh-Hant': '每日平均', 'zh-Hans': '日均' },
+  weekAvg: { en: 'Weekly average', es: 'Media semanal', 'zh-Hant': '每週平均', 'zh-Hans': '周均' },
+  trend: { en: 'Trend', es: 'Tendencia', 'zh-Hant': '趨勢', 'zh-Hans': '趋势' },
 };
 /** Column headers: short, four columns have to fit. */
 const COLUMN_HEADS: Record<Column, Localized> = {
-  today: { en: 'today', es: 'hoy' },
-  week: { en: 'wk', es: 'sem' },
-  dayAvg: { en: 'h/day', es: 'h/día' },
-  weekAvg: { en: 'h/wk', es: 'h/sem' },
-  trend: { en: '', es: '' },
+  today: { en: 'today', es: 'hoy', 'zh-Hant': '今日', 'zh-Hans': '今日' },
+  week: { en: 'wk', es: 'sem', 'zh-Hant': '本週', 'zh-Hans': '本周' },
+  dayAvg: { en: 'h/day', es: 'h/día', 'zh-Hant': 'h/日', 'zh-Hans': 'h/日' },
+  weekAvg: { en: 'h/wk', es: 'h/sem', 'zh-Hant': 'h/週', 'zh-Hans': 'h/周' },
+  trend: { en: '', es: '', 'zh-Hant': '', 'zh-Hans': '' },
 };
 
 /** The columns to draw, in the user's order, each once; empty = all. */
@@ -140,10 +144,12 @@ export function peopleOf(data: TimelogsData, o: HoursOptions, now: number, workd
 
 export const hours = defineWidget({
   id: 'hours',
-  name: { en: 'Hours logged', es: 'Horas imputadas' },
+  name: { en: 'Hours logged', es: 'Horas imputadas', 'zh-Hant': '已登記工時', 'zh-Hans': '已登记工时' },
   description: {
     en: 'Hours logged in GitLab by you and your group: today, this week, daily and weekly averages, and each one\'s trend against themselves. Yours turn green or red against what is due by now, per your working week in Settings.',
     es: 'Las horas imputadas en GitLab por ti y tu grupo: hoy, la semana, medias diaria y semanal, y la tendencia de cada cual contra sí mismo. Las tuyas, en verde o rojo según lo que toca a esta hora, según tu jornada de Ajustes.',
+    'zh-Hant': '你和你的群組在 GitLab 登記的工時：今天、本週、每日與每週平均，以及每項相對於自身的趨勢。你的數字會依「設定」中的工作週，與目前應登記的時數比較，顯示為綠色或紅色。',
+    'zh-Hans': '你和你的群组在 GitLab 登记的工时：今天、本周、日均和周均，以及每项相对自身的趋势。你的数字会根据“设置”中的工作周，与当前应登记的时数比较，显示为绿色或红色。',
   },
   icon: 'clock',
   category: 'dev',
@@ -155,11 +161,11 @@ export const hours = defineWidget({
     columns: t.list(t.enum(COLUMNS, { default: 'today', labels: COLUMN_NAMES }), {
       default: [...COLUMNS],
       max: COLUMNS.length,
-      label: { en: 'Columns', es: 'Columnas' },
-      help: { en: 'Which figures, in this order. Empty = all.', es: 'Qué cifras, en este orden. Vacío = todas.' },
+      label: { en: 'Columns', es: 'Columnas', 'zh-Hant': '欄位', 'zh-Hans': '列' },
+      help: { en: 'Which figures, in this order. Empty = all.', es: 'Qué cifras, en este orden. Vacío = todas.', 'zh-Hant': '要顯示哪些數字及其順序。留空 = 全部。', 'zh-Hans': '要显示哪些数字及其顺序。留空 = 全部。' },
     }),
-    people: t.filter({ label: { en: 'People', es: 'Personas' }, help: { en: 'Empty: the whole group. Usernames or patterns, comma-separated (ana.*, !bot-*); an alias works too.', es: 'Vacío: todo el grupo. Usuarios o patrones separados por comas (ana.*, !bot-*); también vale el alias.' } }),
-    aliases: t.map({ advanced: true, label: { en: 'Names', es: 'Nombres' }, help: { en: 'Username → what to show. Others show their first three letters.', es: 'Usuario → lo que se muestra. El resto, sus tres primeras letras.' }, keyLabel: { en: 'Username', es: 'Usuario' }, valueLabel: { en: 'Show as', es: 'Mostrar como' } }),
+    people: t.filter({ label: { en: 'People', es: 'Personas', 'zh-Hant': '成員', 'zh-Hans': '成员' }, help: { en: 'Empty: the whole group. Usernames or patterns, comma-separated (ana.*, !bot-*); an alias works too.', es: 'Vacío: todo el grupo. Usuarios o patrones separados por comas (ana.*, !bot-*); también vale el alias.', 'zh-Hant': '留空：整個群組。以逗號分隔的使用者名稱或模式（ana.*, !bot-*）；也可使用別名。', 'zh-Hans': '留空：整个群组。以逗号分隔的用户名或模式（ana.*, !bot-*）；也可使用别名。' } }),
+    aliases: t.map({ advanced: true, label: { en: 'Names', es: 'Nombres', 'zh-Hant': '顯示名稱', 'zh-Hans': '显示名称' }, help: { en: 'Username → what to show. Others show their first three letters.', es: 'Usuario → lo que se muestra. El resto, sus tres primeras letras.', 'zh-Hant': '使用者名稱 → 要顯示的文字。其他人顯示前三個字母。', 'zh-Hans': '用户名 → 要显示的文字。其他人显示前三个字母。' }, keyLabel: { en: 'Username', es: 'Usuario', 'zh-Hant': '使用者名稱', 'zh-Hans': '用户名' }, valueLabel: { en: 'Show as', es: 'Mostrar como', 'zh-Hant': '顯示為', 'zh-Hans': '显示为' } }),
   }),
   redraw: 'minute',
   visible: ({ sources }) => Boolean(timelogsOf(sources)),
@@ -173,7 +179,7 @@ export const hours = defineWidget({
     if (!data) return;
     const { colors, fonts } = theme;
     const people = peopleOf(data, options, now, workday);
-    if (!people.length) return drawEmpty(g, ctx, tr({ en: 'Nobody to show', es: 'Nadie que mostrar' }));
+    if (!people.length) return drawEmpty(g, ctx, tr({ en: 'Nobody to show', es: 'Nadie que mostrar', 'zh-Hant': '沒有可顯示的人', 'zh-Hans': '没有可显示的人' }));
     const pace = expectedHours(now, workday);
     const cols = columnsOf(options.columns);
     const headH = Math.min(64, box.h * 0.22);
@@ -193,7 +199,7 @@ export const hours = defineWidget({
         case 'trend': return p.trend ? [...trend[p.trend]] : ['', colors.inkDim];
       }
     };
-    const rows = people.slice(0, plan.shown).map((p) => ({ p, name: p.me ? tr({ en: 'you', es: 'tú' }) : shortName(p.user, options.aliases), cells: cols.map((c) => cell(p, c)) }));
+    const rows = people.slice(0, plan.shown).map((p) => ({ p, name: p.me ? tr({ en: 'you', es: 'tú', 'zh-Hant': '你', 'zh-Hans': '你' }) : shortName(p.user, options.aliases), cells: cols.map((c) => cell(p, c)) }));
     const labels = cols.map((c) => tr(COLUMN_HEADS[c]));
     const colW = labels.map((l, i) => Math.max(kit.measureTracked(g, l, lab), ...rows.map((r) => kit.measureTracked(g, r.cells[i]![0], num))));
     // Names start a little in (the tail of a j would leave the box): their column counts it.
@@ -246,10 +252,12 @@ const MIN = 60_000;
 
 export const focus = defineWidget({
   id: 'focus',
-  name: { en: 'Left to log', es: 'Por imputar' },
+  name: { en: 'Left to log', es: 'Por imputar', 'zh-Hant': '待登記', 'zh-Hans': '待登记' },
   description: {
     en: 'What you have logged today against what is due by now (per your working week in Settings), and what is still unlogged: finished meetings and agent activity per project.',
     es: 'Lo imputado hoy frente a lo que toca a esta hora (según tu jornada de Ajustes), y lo que falta por imputar: reuniones terminadas y actividad con agentes por proyecto.',
+    'zh-Hant': '你今天已登記的工時與目前應登記的時數比較（依「設定」中的工作週），以及仍未登記的項目：已結束的會議與各專案的代理活動。',
+    'zh-Hans': '你今天已登记的工时与当前应登记的时数对比（根据“设置”中的工作周），以及尚未登记的内容：已结束的会议和各项目的智能体活动。',
   },
   icon: 'list-checks',
   category: 'dev',
@@ -258,11 +266,11 @@ export const focus = defineWidget({
   sources: [TIMELOGS, ACTIVITY, CALENDAR],
   options: t.object({
     ...listOptions(),
-    minPendingMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, label: { en: 'Smallest activity to propose', es: 'Actividad mínima a proponer' } }),
-    debtWarnMs: t.duration({ default: HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: amber from', es: 'Debes: ámbar desde' }, help: { en: 'Hours due by now and not logged yet.', es: 'Horas que tocan a esta hora y aún no están imputadas.' } }),
-    debtAlertMs: t.duration({ default: 2 * HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: red from', es: 'Debes: rojo desde' } }),
-    meetingGraceMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent after a meeting for', es: 'Urgente tras una reunión durante' }, help: { en: '0 = never.', es: '0 = nunca.' } }),
-    closingMs: t.duration({ default: 30 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent before leaving', es: 'Urgente antes de salir' }, help: { en: 'In the last minutes of the day, if hours are still owed. 0 = never.', es: 'En los últimos minutos de la jornada, si aún se deben horas. 0 = nunca.' } }),
+    minPendingMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, label: { en: 'Smallest activity to propose', es: 'Actividad mínima a proponer', 'zh-Hant': '建議登記的最短活動', 'zh-Hans': '建议登记的最短活动' } }),
+    debtWarnMs: t.duration({ default: HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: amber from', es: 'Debes: ámbar desde', 'zh-Hant': '欠登：琥珀色門檻', 'zh-Hans': '欠登：琥珀色阈值' }, help: { en: 'Hours due by now and not logged yet.', es: 'Horas que tocan a esta hora y aún no están imputadas.', 'zh-Hant': '目前應登記但尚未登記的時數。', 'zh-Hans': '当前应登记但尚未登记的时数。' } }),
+    debtAlertMs: t.duration({ default: 2 * HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: red from', es: 'Debes: rojo desde', 'zh-Hant': '欠登：紅色門檻', 'zh-Hans': '欠登：红色阈值' } }),
+    meetingGraceMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent after a meeting for', es: 'Urgente tras una reunión durante', 'zh-Hant': '會議結束後多久轉為緊急', 'zh-Hans': '会议结束后多久转为紧急' }, help: { en: '0 = never.', es: '0 = nunca.', 'zh-Hant': '0 = 永不。', 'zh-Hans': '0 = 从不。' } }),
+    closingMs: t.duration({ default: 30 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent before leaving', es: 'Urgente antes de salir', 'zh-Hant': '下班前轉為緊急', 'zh-Hans': '下班前转为紧急' }, help: { en: 'In the last minutes of the day, if hours are still owed. 0 = never.', es: 'En los últimos minutos de la jornada, si aún se deben horas. 0 = nunca.', 'zh-Hant': '一天的最後幾分鐘內，若仍有工時未登記。0 = 永不。', 'zh-Hans': '一天的最后几分钟内，若仍有工时未登记。0 = 从不。' } }),
   }),
   redraw: 'minute',
   visible: ({ options, sources, now, workday }) => {
@@ -321,12 +329,13 @@ export const focus = defineWidget({
 
 export default definePlugin({
   id: 'timesheet',
-  name: { en: 'Timesheet', es: 'Imputación de horas' },
+  name: { en: 'Timesheet', es: 'Imputación de horas', 'zh-Hant': '工時', 'zh-Hans': '工时' },
   version: '0.2.2',
+  languages: ['en', 'es', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['gitlab.com', 'user'], exec: ['glab'], files: ['~/.aimonitor/actividad'] },
   optional: ['calendar/events'],
-  description: { en: 'Hours logged in GitLab, yours and your group\'s, and what is still left to log today.', es: 'Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy.' },
+  description: { en: 'Hours logged in GitLab, yours and your group\'s, and what is still left to log today.', es: 'Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy.', 'zh-Hant': '你和你群組在 GitLab 已登記的工時，以及今天還有哪些待登記。', 'zh-Hans': '你和你群组在 GitLab 已登记的工时，以及今天还有哪些待登记。' },
   author: 'Kiosko',
   license: 'MIT',
   icon: 'clock',

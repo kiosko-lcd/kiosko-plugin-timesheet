@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_WORKDAY, type Workday } from '@kiosko/sdk';
+import { DEFAULT_WORKDAY, errorMessage, type Workday } from '@kiosko/sdk';
 import { addDays, dayShape, daysBetween, expectedHours, fetchRows, graphqlUrl, hoursRound, hoursText, inWorkday, localDay, localMinutes, minutesToEnd, mondayOf, parseTimelogPage, shortName, summarize, timelogQuery, trendOf, weekdayOf, weekHours, whoAmI, windowStart, workFractions, type TimelogRow } from './index.ts';
 
 const TZ = 'Europe/Madrid';
@@ -104,7 +104,11 @@ test('connection helpers', async () => {
   assert.equal(graphqlUrl(''), 'https://gitlab.com/api/graphql');
   assert.equal(graphqlUrl('git.acme.io/'), 'https://git.acme.io/api/graphql');
   assert.equal(await whoAmI(async () => '{"data":{"currentUser":{"username":"me"}}}'), 'me');
-  await assert.rejects(whoAmI(async () => '{"data":{"currentUser":null}}'), /not logged in/);
+  await assert.rejects(whoAmI(async () => '{"data":{"currentUser":null}}'), /Not logged in/);
+  await assert.rejects(whoAmI(async () => '{"data":{"currentUser":null}}'), (e: unknown) => errorMessage(e, 'zh-TW').startsWith('尚未登入 GitLab'));
+  assert.throws(() => parseTimelogPage('{"data":{"group":null}}'), (e: unknown) => errorMessage(e, 'zh-CN').startsWith('群组不存在'));
+  const { connect } = await import('./gitlab.ts');
+  await assert.rejects(connect({ bin: '/nonexistent/glab', host: '', token: '' }, new AbortController().signal)('{ currentUser { username } }'), (e: unknown) => errorMessage(e, 'es').startsWith('No se encuentra glab'));
 });
 
 const week = (o: Partial<Workday> = {}): Workday => ({ ...DEFAULT_WORKDAY, ...o });

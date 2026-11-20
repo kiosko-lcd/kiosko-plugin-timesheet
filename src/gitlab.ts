@@ -6,6 +6,15 @@
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { PluginError, type Localized } from '@kiosko/sdk';
+
+/** GitLab answered that nobody is logged in: the token, or glab's login, is missing or wrong. */
+const NOT_LOGGED_IN: Localized = {
+  en: 'Not logged in to GitLab: check the access token in this source, or run glab auth login',
+  es: 'Sin sesión en GitLab: revisa el token de acceso de esta fuente o ejecuta glab auth login',
+  'zh-Hant': '尚未登入 GitLab：請檢查此資料來源的存取權杖，或執行 glab auth login',
+  'zh-Hans': '尚未登录 GitLab：请检查此数据源的访问令牌，或运行 glab auth login',
+};
 
 const execFileAsync = promisify(execFile);
 
@@ -37,12 +46,25 @@ export function connect(c: Connection, signal: AbortSignal): GraphQL {
         body: JSON.stringify({ query }),
         signal,
       });
+      if (res.status === 401) throw new PluginError(NOT_LOGGED_IN);
       if (!res.ok) throw new Error(`GitLab HTTP ${res.status}`);
       return res.text();
     };
   }
   const host = c.host.trim() ? ['--hostname', c.host.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '')] : [];
-  return async (query) => (await execFileAsync(c.bin || 'glab', ['api', 'graphql', '-f', `query=${query}`, ...host], { maxBuffer: 8_000_000, signal })).stdout;
+  return async (query) => {
+    const run = execFileAsync(c.bin || 'glab', ['api', 'graphql', '-f', `query=${query}`, ...host], { maxBuffer: 8_000_000, signal });
+    const { stdout } = await run.catch((e: unknown) => {
+      if ((e as { code?: unknown }).code !== 'ENOENT') throw e;
+      throw new PluginError({
+        en: 'glab not found: install the GitLab CLI, or set an access token in this source',
+        es: 'No se encuentra glab: instala el CLI de GitLab o pon un token de acceso en esta fuente',
+        'zh-Hant': '找不到 glab：請安裝 GitLab CLI，或在此資料來源中設定存取權杖',
+        'zh-Hans': '找不到 glab：请安装 GitLab CLI，或在此数据源中设置访问令牌',
+      }, { cause: e });
+    });
+    return stdout;
+  };
 }
 
 /** Throws the first GraphQL error, if any; returns `data`. */
@@ -55,6 +77,6 @@ export function dataOf<T>(text: string): T | undefined {
 /** Your GitLab username. */
 export async function whoAmI(gql: GraphQL): Promise<string> {
   const u = dataOf<{ currentUser?: { username?: string } | null }>(await gql('{ currentUser { username } }'))?.currentUser?.username;
-  if (!u) throw new Error('not logged in to GitLab (no current user)');
+  if (!u) throw new PluginError(NOT_LOGGED_IN);
   return u;
 }
