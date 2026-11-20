@@ -110,11 +110,11 @@ export function focusView(i: FocusInput): FocusView {
 }
 
 export const TEXT = {
-  loggedToday: { en: 'logged today', es: 'imputado hoy', 'zh-Hant': '今日已登記', 'zh-Hans': '今日已登记' },
-  due: { en: 'due', es: 'toca', 'zh-Hant': '應登記', 'zh-Hans': '应登记' },
-  left: { en: 'left', es: 'faltan', 'zh-Hant': '尚缺', 'zh-Hans': '还差' },
-  notLogged: { en: 'NOT LOGGED', es: 'SIN IMPUTAR', 'zh-Hant': '未登記', 'zh-Hans': '未登记' },
-  nothing: { en: 'Nothing left to log', es: 'Nada pendiente de imputar', 'zh-Hant': '沒有待登記的工時', 'zh-Hans': '没有待登记的工时' },
-  unlogged: { en: 'unlogged', es: 'sin imputar', 'zh-Hant': '未登記', 'zh-Hans': '未登记' },
-  privateMeeting: { en: 'Meeting (private)', es: 'Reunión (privada)', 'zh-Hant': '會議（私人）', 'zh-Hans': '会议（私人）' },
+  loggedToday: { en: 'logged today', es: 'imputado hoy', de: 'heute erfasst', 'zh-Hant': '今日已登記', 'zh-Hans': '今日已登记' },
+  due: { en: 'due', es: 'toca', de: 'Soll', 'zh-Hant': '應登記', 'zh-Hans': '应登记' },
+  left: { en: 'left', es: 'faltan', de: 'offen', 'zh-Hant': '尚缺', 'zh-Hans': '还差' },
+  notLogged: { en: 'NOT LOGGED', es: 'SIN IMPUTAR', de: 'NICHT ERFASST', 'zh-Hant': '未登記', 'zh-Hans': '未登记' },
+  nothing: { en: 'Nothing left to log', es: 'Nada pendiente de imputar', de: 'Nichts mehr zu erfassen', 'zh-Hant': '沒有待登記的工時', 'zh-Hans': '没有待登记的工时' },
+  unlogged: { en: 'unlogged', es: 'sin imputar', de: 'offen', 'zh-Hant': '未登記', 'zh-Hans': '未登记' },
+  privateMeeting: { en: 'Meeting (private)', es: 'Reunión (privada)', de: 'Termin (privat)', 'zh-Hant': '會議（私人）', 'zh-Hans': '会议（私人）' },
 } satisfies Record<string, Localized>;
