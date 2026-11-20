@@ -12,6 +12,7 @@ import { PluginError, type Localized } from '@kiosko/sdk';
 const NOT_LOGGED_IN: Localized = {
   en: 'Not logged in to GitLab: check the access token in this source, or run glab auth login',
   es: 'Sin sesión en GitLab: revisa el token de acceso de esta fuente o ejecuta glab auth login',
+  de: 'Nicht bei GitLab angemeldet: Prüfe das Zugriffstoken in dieser Datenquelle oder führe glab auth login aus',
   'zh-Hant': '尚未登入 GitLab：請檢查此資料來源的存取權杖，或執行 glab auth login',
   'zh-Hans': '尚未登录 GitLab：请检查此数据源的访问令牌，或运行 glab auth login',
 };
@@ -59,6 +60,7 @@ export function connect(c: Connection, signal: AbortSignal): GraphQL {
       throw new PluginError({
         en: 'glab not found: install the GitLab CLI, or set an access token in this source',
         es: 'No se encuentra glab: instala el CLI de GitLab o pon un token de acceso en esta fuente',
+        de: 'glab nicht gefunden: Installiere die GitLab-CLI oder trage in dieser Datenquelle ein Zugriffstoken ein',
         'zh-Hant': '找不到 glab：請安裝 GitLab CLI，或在此資料來源中設定存取權杖',
         'zh-Hans': '找不到 glab：请安装 GitLab CLI，或在此数据源中设置访问令牌',
       }, { cause: e });

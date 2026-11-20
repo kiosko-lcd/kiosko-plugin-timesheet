@@ -268,6 +268,7 @@ export function parseTimelogPage(json: string): { rows: TimelogRow[]; next: stri
     throw new PluginError({
       en: 'The group does not exist or its timelogs cannot be read: check its full path in this source',
       es: 'El grupo no existe o no se pueden leer sus imputaciones: revisa su ruta completa en esta fuente',
+      de: 'Die Gruppe existiert nicht oder ihre Zeiterfassungen sind nicht lesbar: Prüfe ihren vollständigen Pfad in dieser Datenquelle',
       'zh-Hant': '群組不存在或無法讀取其工時紀錄：請檢查此資料來源中的群組完整路徑',
       'zh-Hans': '群组不存在或无法读取其工时记录：请检查此数据源中的群组完整路径',
     });
