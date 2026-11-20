@@ -114,9 +114,24 @@ export const columnsOf = (cols: readonly string[]): Column[] => {
 
 type HoursOptions = { people: string[]; aliases: Record<string, string> };
 
+/**
+ * The summary of a source's data, kept while the data and the minute stay the
+ * same: the widget asks for it in `empty` and in `render`, every minute, and
+ * the figures only change with new timelogs or a new minute.
+ */
+const summaries = new WeakMap<TimelogsData, { key: string; view: ReturnType<typeof summarize> }>();
+function summaryOf(data: TimelogsData, now: number, workday: Workday) {
+  const key = `${Math.floor(now / 60_000)}|${JSON.stringify(workday)}`;
+  const hit = summaries.get(data);
+  if (hit?.key === key) return hit.view;
+  const view = summarize(data.rows, { now, me: data.me, weeks: data.weeks, workday });
+  summaries.set(data, { key, view });
+  return view;
+}
+
 /** The people of the table: everyone in the timelogs, through the `people` filter (by username or by alias). */
 export function peopleOf(data: TimelogsData, o: HoursOptions, now: number, workday: Workday): PersonHours[] {
-  const v = summarize(data.rows, { now, me: data.me, weeks: data.weeks, workday });
+  const v = summaryOf(data, now, workday);
   return v.people.filter((p) => {
     const alias = o.aliases[p.user];
     return matchFilter(alias ? [p.user, alias] : p.user, o.people);
@@ -307,7 +322,7 @@ export const focus = defineWidget({
 export default definePlugin({
   id: 'timesheet',
   name: { en: 'Timesheet', es: 'Imputación de horas' },
-  version: '0.2.1',
+  version: '0.2.2',
   sdk: '^0.2.0',
   permissions: { network: ['gitlab.com', 'user'], exec: ['glab'], files: ['~/.aimonitor/actividad'] },
   optional: ['calendar/events'],
