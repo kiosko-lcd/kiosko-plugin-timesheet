@@ -331,6 +331,7 @@ export default definePlugin({
   id: 'timesheet',
   name: { en: 'Timesheet', es: 'Imputación de horas', 'zh-Hant': '工時', 'zh-Hans': '工时' },
   version: '0.2.2',
+  languages: ['en', 'es', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['gitlab.com', 'user'], exec: ['glab'], files: ['~/.aimonitor/actividad'] },
   optional: ['calendar/events'],
