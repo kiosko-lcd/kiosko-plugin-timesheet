@@ -71,8 +71,22 @@ export function trendOf(week: number, fraction: number, weekAvg: number | null):
 }
 
 /** YYYY-MM-DD in the given time zone (or the system's). */
+/**
+ * Formatters by time zone, made once: creating an `Intl.DateTimeFormat` costs
+ * ~170 µs, and the table turned every timelog of the group into a day on
+ * every paint (2 500 rows: 330 ms).
+ */
+const dayFormats = new Map<string, Intl.DateTimeFormat>();
+const minuteFormats = new Map<string, Intl.DateTimeFormat>();
+const formatOf = (cache: Map<string, Intl.DateTimeFormat>, timeZone: string | undefined, make: () => Intl.DateTimeFormat) => {
+  const k = timeZone ?? '';
+  let f = cache.get(k);
+  if (!f) cache.set(k, (f = make()));
+  return f;
+};
+
 export function localDay(ms: number, timeZone?: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+  return formatOf(dayFormats, timeZone, () => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })).format(ms);
 }
 
 /** Adds `n` days to a YYYY-MM-DD date, without going through time zones. */
@@ -106,7 +120,7 @@ export function weekdayOf(day: string): number {
 
 /** Minutes since local midnight. */
 export function localMinutes(ms: number, timeZone?: string): number {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(ms);
+  const parts = formatOf(minuteFormats, timeZone, () => new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })).formatToParts(ms);
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
   return get('hour') * 60 + get('minute');
 }

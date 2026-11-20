@@ -6,7 +6,7 @@
     "en": "Timesheet",
     "es": "Imputación de horas"
   },
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": {
     "en": "Hours logged in GitLab, yours and your group's, and what is still left to log today.",
     "es": "Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy."

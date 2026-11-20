@@ -1,6 +1,6 @@
 {
   "name": "kiosko-plugin-timesheet",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Hours logged in GitLab, yours and your group's, and what is still left to log today.",
   "type": "module",
   "license": "MIT",
