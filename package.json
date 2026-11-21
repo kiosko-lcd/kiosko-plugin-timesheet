@@ -4,7 +4,7 @@
   "description": "Hours logged in GitLab, yours and your group's, and what is still left to log today.",
   "type": "module",
   "license": "MIT",
-  "author": "Loksly",
+  "author": "Loksly <info@kioskolcd.dev> (https://kioskolcd.dev)",
   "keywords": [
     "kiosko",
     "kiosko-plugin",
