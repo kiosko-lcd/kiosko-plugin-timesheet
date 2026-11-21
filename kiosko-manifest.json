@@ -9,7 +9,7 @@
     "zh-Hant": "工時",
     "zh-Hans": "工时"
   },
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": {
     "en": "Hours logged in GitLab, yours and your group's, and what is still left to log today.",
     "es": "Las horas imputadas en GitLab, tuyas y de tu grupo, y lo que falta por imputar hoy.",
@@ -415,8 +415,8 @@
                 "en": "Owed: amber from",
                 "es": "Debes: ámbar desde",
                 "de": "Rückstand: gelb ab",
-                "zh-Hant": "欠登：琥珀色門檻",
-                "zh-Hans": "欠登：琥珀色阈值"
+                "zh-Hant": "待補登工時：琥珀色門檻",
+                "zh-Hans": "待补登工时：琥珀色阈值"
               },
               "help": {
                 "en": "Hours due by now and not logged yet.",
@@ -440,8 +440,8 @@
                 "en": "Owed: red from",
                 "es": "Debes: rojo desde",
                 "de": "Rückstand: rot ab",
-                "zh-Hant": "欠登：紅色門檻",
-                "zh-Hans": "欠登：红色阈值"
+                "zh-Hant": "待補登工時：紅色門檻",
+                "zh-Hans": "待补登工时：红色阈值"
               },
               "advanced": true,
               "unit": "ms"
