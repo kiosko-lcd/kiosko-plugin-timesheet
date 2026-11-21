@@ -271,8 +271,8 @@ export const focus = defineWidget({
   options: t.object({
     ...listOptions(),
     minPendingMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, label: { en: 'Smallest activity to propose', es: 'Actividad mínima a proponer', de: 'Kleinste vorzuschlagende Aktivität', 'zh-Hant': '建議登記的最短活動', 'zh-Hans': '建议登记的最短活动' } }),
-    debtWarnMs: t.duration({ default: HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: amber from', es: 'Debes: ámbar desde', de: 'Rückstand: gelb ab', 'zh-Hant': '欠登：琥珀色門檻', 'zh-Hans': '欠登：琥珀色阈值' }, help: { en: 'Hours due by now and not logged yet.', es: 'Horas que tocan a esta hora y aún no están imputadas.', de: 'Bis jetzt fällige, noch nicht erfasste Stunden.', 'zh-Hant': '目前應登記但尚未登記的時數。', 'zh-Hans': '当前应登记但尚未登记的时数。' } }),
-    debtAlertMs: t.duration({ default: 2 * HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: red from', es: 'Debes: rojo desde', de: 'Rückstand: rot ab', 'zh-Hant': '欠登：紅色門檻', 'zh-Hans': '欠登：红色阈值' } }),
+    debtWarnMs: t.duration({ default: HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: amber from', es: 'Debes: ámbar desde', de: 'Rückstand: gelb ab', 'zh-Hant': '待補登工時：琥珀色門檻', 'zh-Hans': '待补登工时：琥珀色阈值' }, help: { en: 'Hours due by now and not logged yet.', es: 'Horas que tocan a esta hora y aún no están imputadas.', de: 'Bis jetzt fällige, noch nicht erfasste Stunden.', 'zh-Hant': '目前應登記但尚未登記的時數。', 'zh-Hans': '当前应登记但尚未登记的时数。' } }),
+    debtAlertMs: t.duration({ default: 2 * HOUR, min: 0, max: 8 * HOUR, advanced: true, label: { en: 'Owed: red from', es: 'Debes: rojo desde', de: 'Rückstand: rot ab', 'zh-Hant': '待補登工時：紅色門檻', 'zh-Hans': '待补登工时：红色阈值' } }),
     meetingGraceMs: t.duration({ default: 15 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent after a meeting for', es: 'Urgente tras una reunión durante', de: 'Dringend nach einem Termin für', 'zh-Hant': '會議結束後多久轉為緊急', 'zh-Hans': '会议结束后多久转为紧急' }, help: { en: '0 = never.', es: '0 = nunca.', de: '0 = nie.', 'zh-Hant': '0 = 永不。', 'zh-Hans': '0 = 从不。' } }),
     closingMs: t.duration({ default: 30 * MIN, min: 0, max: 4 * HOUR, advanced: true, label: { en: 'Urgent before leaving', es: 'Urgente antes de salir', de: 'Dringend vor Feierabend', 'zh-Hant': '下班前轉為緊急', 'zh-Hans': '下班前转为紧急' }, help: { en: 'In the last minutes of the day, if hours are still owed. 0 = never.', es: 'En los últimos minutos de la jornada, si aún se deben horas. 0 = nunca.', de: 'In den letzten Minuten des Arbeitstags, wenn noch Stunden offen sind. 0 = nie.', 'zh-Hant': '一天的最後幾分鐘內，若仍有工時未登記。0 = 永不。', 'zh-Hans': '一天的最后几分钟内，若仍有工时未登记。0 = 从不。' } }),
   }),
@@ -334,7 +334,7 @@ export const focus = defineWidget({
 export default definePlugin({
   id: 'timesheet',
   name: { en: 'Timesheet', es: 'Imputación de horas', de: 'Zeiterfassung', 'zh-Hant': '工時', 'zh-Hans': '工时' },
-  version: '0.2.3',
+  version: '0.2.4',
   languages: ['en', 'es', 'de', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['gitlab.com', 'user'], exec: ['glab'], files: ['~/.aimonitor/actividad'] },
